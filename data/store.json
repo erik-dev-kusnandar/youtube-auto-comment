@@ -1,0 +1,33 @@
+{
+  "videos": [
+    {
+      "url": "https://www.youtube.com/watch?v=reA-KRDHt90",
+      "videoId": "reA-KRDHt90",
+      "status": "done",
+      "comment": "Mantap videonya! 🔥"
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=abcd1234",
+      "videoId": "abcd1234",
+      "status": "error",
+      "comment": ""
+    },
+    {
+      "url": "https://youtu.be/Zxy99887",
+      "videoId": "Zxy99887",
+      "status": "error",
+      "comment": ""
+    }
+  ],
+  "comments": [
+    {
+      "text": "Mantap videonya! 🔥"
+    },
+    {
+      "text": "Informasi yang sangat bermanfaat 🙌"
+    },
+    {
+      "text": "Keren banget kontennya sahabat 💯"
+    }
+  ]
+}

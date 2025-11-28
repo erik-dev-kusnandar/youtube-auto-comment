@@ -1,0 +1,23 @@
+{
+  "name": "youtube-auto-comment",
+  "version": "1.0.0",
+  "main": "src/app.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/app.js",
+    "auth": "node src/auth.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "cors": "^2.8.5",
+    "csv-parse": "^6.1.0",
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "googleapis": "^166.0.0",
+    "multer": "^2.0.2",
+    "open": "^9.1.0",
+    "winston": "^3.18.3",
+    "winston-daily-rotate-file": "^4.7.1"
+  }
+}
