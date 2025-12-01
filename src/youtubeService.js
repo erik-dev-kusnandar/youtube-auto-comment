@@ -5,57 +5,49 @@ const { google } = require("googleapis");
 const logger = require("./logger");
 
 const TOKEN_PATH = path.join(__dirname, "../data/tokens.json");
-const CLIENT_ID = process.env.CLIENT_ID;
-const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const BASE_URL = process.env.BASE_URL;
 
 function loadRefreshToken() {
-  if (!fs.existsSync(TOKEN_PATH)) {
-    throw new Error("tokens.json not found. Run: npm run auth");
-  }
-
   const data = JSON.parse(fs.readFileSync(TOKEN_PATH));
-  return data.accounts?.default?.refresh_token;
+  return data.accounts.default.refresh_token;
 }
 
-function createOAuthClient() {
-  const refreshToken = loadRefreshToken();
-
-  const oauth2Client = new google.auth.OAuth2(
-    CLIENT_ID,
-    CLIENT_SECRET,
-    `${BASE_URL}/oauth2callback`
+function createClient() {
+  const client = new google.auth.OAuth2(
+    process.env.CLIENT_ID,
+    process.env.CLIENT_SECRET,
+    `${process.env.BASE_URL}/oauth2callback`
   );
 
-  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  client.setCredentials({
+    refresh_token: loadRefreshToken(),
+  });
 
-  return oauth2Client;
+  return client;
 }
 
-async function postComment(videoId, message) {
-  const auth = createOAuthClient();
-  const youtube = google.youtube({ version: "v3", auth });
-
+async function postComment(videoId, text) {
   try {
-    const response = await youtube.commentThreads.insert({
+    const auth = createClient();
+    const yt = google.youtube({ version: "v3", auth });
+
+    const result = await yt.commentThreads.insert({
       part: ["snippet"],
       requestBody: {
         snippet: {
           videoId,
           topLevelComment: {
-            snippet: { textOriginal: message }
-          }
-        }
-      }
+            snippet: { textOriginal: text },
+          },
+        },
+      },
     });
 
-    logger.info(`Comment posted: ${response.data.id}`);
-    return response.data;
-
-  } catch (error) {
-    logger.error("Failed to post comment");
-    logger.error(error);
-    throw error;
+    logger.info(`Comment posted → ${result.data.id}`);
+    return result.data;
+    } catch (error) {
+    const msg = error?.errors?.[0]?.message || error.message || "Unknown error";
+    logger.error("Failed to post comment: " + msg);
+    throw new Error(msg);
   }
 }
 

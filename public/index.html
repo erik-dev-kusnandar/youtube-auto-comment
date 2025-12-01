@@ -1,70 +1,119 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>YouTube Auto Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css"
-      rel="stylesheet"
-    />
-  </head>
-  <body class="bg-light">
-    <div class="container py-4">
-      <h1 class="mb-3">YouTube Auto-Comment Dashboard</h1>
+<head>
+  <meta charset="utf-8" />
+  <title>YouTube Auto-Comment PRO EXTREME</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-      <div class="row">
-        <div class="col-md-6">
-          <div class="card mb-3">
-            <div class="card-header">Upload Video List (CSV)</div>
-            <div class="card-body">
-              <form id="uploadVideosForm">
-                <input class="form-control mb-2" type="file" id="videosFile" accept=".csv" />
-                <button class="btn btn-primary" type="submit">Upload Videos</button>
-              </form>
-              <small class="text-muted">CSV header: video_url (or videoId)</small>
-            </div>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/css/style.css" rel="stylesheet">
+</head>
+
+<body>
+  <nav class="navbar navbar-light bg-white shadow-sm px-3">
+    <span class="navbar-brand mb-0 fw-bold">
+      YouTube Auto-Comment <span class="badge bg-primary">PRO EXTREME</span>
+    </span>
+
+    <button id="openScheduler" class="btn btn-outline-primary btn-sm">
+      ⏱ Scheduler
+    </button>
+  </nav>
+
+  <div class="container-fluid mt-3">
+    <div class="row g-3">
+
+      <!-- LEFT SIDE -->
+      <div class="col-md-4">
+
+        <!-- Upload Videos -->
+        <div class="card shadow-sm">
+          <div class="card-header fw-bold">
+            📁 Upload Video List (CSV)
+            <small class="text-muted d-block">Header: <b>video_url</b> atau <b>videoId</b></small>
           </div>
-
-          <div class="card mb-3">
-            <div class="card-header">Upload Comment List (CSV)</div>
-            <div class="card-body">
-              <form id="uploadCommentsForm">
-                <input class="form-control mb-2" type="file" id="commentsFile" accept=".csv" />
-                <button class="btn btn-primary" type="submit">Upload Comments</button>
-              </form>
-              <small class="text-muted">CSV header: comment_text</small>
-            </div>
-          </div>
-
-          <div class="d-grid gap-2">
-            <button id="startBtn" class="btn btn-success btn-lg">Start Posting Comments</button>
-            <button id="refreshBtn" class="btn btn-secondary">Refresh Progress</button>
+          <div class="card-body">
+            <div id="videosDrop" class="dropzone">Drop CSV here or click to pick</div>
+            <input id="videosFileInput" type="file" accept=".csv" hidden>
+            <button id="uploadVideosBtn" class="btn btn-primary w-100 mt-2">Upload Videos</button>
+            <div id="videosUploadMsg" class="upload-msg"></div>
           </div>
         </div>
 
-        <div class="col-md-6">
-          <div class="card mb-3">
-            <div class="card-header">Live Log</div>
-            <div class="card-body" style="height: 300px; overflow:auto;" id="logBox"></div>
+        <!-- Upload Comments -->
+        <div class="card shadow-sm mt-3">
+          <div class="card-header fw-bold">
+            💬 Upload Comment List (CSV)
+            <small class="text-muted d-block">Header: <b>comment_text</b></small>
           </div>
-
-          <div class="card">
-            <div class="card-header">Progress</div>
-            <div class="card-body">
-              <table class="table table-sm" id="progressTable">
-                <thead><tr><th>Video</th><th>VideoId</th><th>Status</th><th>Comment</th></tr></thead>
-                <tbody></tbody>
-              </table>
-            </div>
+          <div class="card-body">
+            <div id="commentsDrop" class="dropzone">Drop CSV here or click to pick</div>
+            <input id="commentsFileInput" type="file" accept=".csv" hidden>
+            <button id="uploadCommentsBtn" class="btn btn-primary w-100 mt-2">Upload Comments</button>
+            <div id="commentsUploadMsg" class="upload-msg"></div>
           </div>
         </div>
+
+        <!-- Start -->
+        <div class="card shadow-sm mt-3">
+          <div class="card-body">
+            <div class="mt-2">
+                <label>Comments per video:</label>
+                <input id="commentsPerVideo" class="form-control" type="number" value="5">
+            </div>
+            <div class="mt-2">
+              <label class="mt-2">Delay per comment (ms)</label>
+            </div>
+            <input id="delayInput" type="number" class="form-control" value="3000">
+            <button id="startBtn" class="btn btn-success w-100">🚀 Start Posting</button>
+            <button id="stopBtn" class="btn btn-secondary w-100 mt-2">⛔ Stop</button>
+          </div>
+        </div>
+
       </div>
 
-      <footer class="mt-4 text-muted">Built by Sahabat · Node.js</footer>
-    </div>
+      <!-- RIGHT SIDE -->
+      <div class="col-md-8">
 
-    <script src="/js/main.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
-  </body>
+        <!-- Live Log -->
+        <div class="card shadow-sm">
+          <div class="card-header d-flex justify-content-between">
+            <span class="fw-bold">📄 Live Log</span>
+            <button id="clearLog" class="btn btn-sm btn-outline-danger">Clear</button>
+          </div>
+          <div class="card-body">
+            <pre id="logBox" class="log-box"></pre>
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="card shadow-sm mt-3">
+          <div class="card-header d-flex justify-content-between">
+            <span class="fw-bold">📊 Progress</span>
+            <button id="refreshBtn" class="btn btn-sm btn-outline-secondary">Refresh</button>
+          </div>
+          <div class="card-body p-0">
+            <table class="table table-sm mb-0" id="progressTable">
+              <thead class="table-light">
+                <tr>
+                  <th>Video URL</th>
+                  <th>Video ID</th>
+                  <th>Status</th>
+                  <th>Comment</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+  <script src="/js/main.js"></script>
+</body>
 </html>
