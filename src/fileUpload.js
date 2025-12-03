@@ -1,89 +1,118 @@
-// FILEUPLOAD.JS — FIXED
-
+// ========================================
+//  CSV Upload Handler (Videos & Comments)
+// ========================================
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const store = require("./dataStore");
-const router = express.Router();
-const { extractVideoId } = require("./utils");
-
-const upload = multer({
-    dest: path.join(__dirname, "../uploads"),
-});
-
-// CSV parser
 const fs = require("fs");
 const Papa = require("papaparse");
+const store = require("./dataStore");
 
-async function parseCSV(filePath) {
-  const fileContent = fs.readFileSync(filePath, "utf8");
+const router = express.Router();
 
+// Multer: save raw CSV files
+const upload = multer({
+  dest: path.join(__dirname, "../uploads")
+});
+
+// ======================================================
+// PARSE CSV (robust, support multiline & quoted fields)
+// ======================================================
+function parseCSV(filePath) {
   return new Promise((resolve, reject) => {
-    Papa.parse(fileContent, {
+    const file = fs.readFileSync(filePath, "utf8");
+
+    Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      delimiter: ",",
-      quoteChar: '"',
-      escapeChar: '"',
-      newline: "\n",
       dynamicTyping: false,
-      transformHeader: h => h.trim(),
-      transform: v => (typeof v === "string" ? v.trim() : v),
-      complete: res => resolve(res.data),
-      error: err => reject(err),
+      complete: (results) => resolve(results.data),
+      error: (err) => reject(err)
     });
   });
 }
 
-
-// Upload Video CSV
+// ======================================================
+// UPLOAD VIDEO LIST
+// ======================================================
 router.post("/videos", upload.single("file"), async (req, res) => {
-    if (!req.file) return res.json({ message: "No video CSV uploaded." });
+  try {
+    if (!req.file) return res.json({ message: "No file uploaded." });
 
-    const rows = parseCSV(req.file.path);
+    const rows = await parseCSV(req.file.path);
+
+    if (!Array.isArray(rows)) {
+      return res.json({ message: "CSV format error (rows not array)" });
+    }
 
     const videos = rows
-        .filter(r => r.video_url)
-        .map(r => {
-            let url = r.video_url.trim();
-            let id = url.includes("v=")
-                ? url.split("v=")[1]
-                : url.replace("https://youtu.be/", "");
+      .map(r => ({
+        videoUrl: r.video_url || r.videoId || "",
+        videoId: extractVideoId(r.video_url || r.videoId || ""),
+        status: "pending",
+        comment: ""
+      }))
+      .filter(v => v.videoId);
 
-            return { url, videoId: id, status: "pending", comment: "" };
-        });
-
-    const formatted = rows.map(r => {
-        const url = r.video_url || r.videoId || r.url;
-        return {
-            videoUrl: url || "",          // <-- ADD THIS
-            videoId: extractVideoId(url),
-            status: "pending",
-            comment: ""
-        };
-        });
-
-    store.saveVideos(formatted);
-
-    // store.saveVideos(videos);
+    store.saveVideos(videos);
 
     res.json({ message: `Uploaded ${videos.length} videos 🎥` });
+
+  } catch (err) {
+    console.error("UPLOAD VIDEO ERROR:", err);
+    res.json({ message: "Error parsing CSV (video list)" });
+  }
 });
 
-
-// Upload Comment CSV
+// ======================================================
+// UPLOAD COMMENT LIST (supports multi-line + quotes)
+// ======================================================
 router.post("/comments", upload.single("file"), async (req, res) => {
-    if (!req.file) return res.json({ message: "No comment CSV uploaded." });
+  try {
+    if (!req.file) return res.json({ message: "No file uploaded." });
 
-    const rows = parseCSV(req.file.path);
+    const rows = await parseCSV(req.file.path);
 
     const comments = rows
-        .filter(r => r.comment_text)
-        .map(r => ({ text: r.comment_text.trim() }));
+      .map(r => ({
+        text: (r.comment_text || "").trim()
+      }))
+      .filter(c => c.text.length > 0);
 
     store.saveComments(comments);
 
     res.json({ message: `Uploaded ${comments.length} comments 💬` });
+
+  } catch (err) {
+    console.error("UPLOAD COMMENT ERROR:", err);
+    res.json({ message: "Error parsing CSV (comments)" });
+  }
 });
+
+// ======================================================
+// YOUTUBE ID EXTRACTOR (support shorts, url, embed, etc.)
+// ======================================================
+function extractVideoId(url) {
+  if (!url) return "";
+
+  try {
+    if (url.includes("youtube.com/watch?v=")) {
+      return url.split("v=")[1].split("&")[0];
+    }
+
+    if (url.includes("youtube.com/shorts/")) {
+      return url.split("shorts/")[1].split("?")[0];
+    }
+
+    if (url.includes("youtu.be/")) {
+      return url.split("shorts/")[1].split("?")[0];
+    }
+
+    if (url.length === 11) return url;
+
+  } catch (e) {}
+
+  return "";
+}
 
 module.exports = router;

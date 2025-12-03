@@ -24,23 +24,17 @@ function showToast(message, type = "info") {
 // ================================
 //  CSV UPLOAD HANDLER
 // ================================
-async function handleCSVUpload(dropEl, inputEl, btnEl, msgEl, endpoint) {
+function handleCSVUpload(dropEl, inputEl, btnEl, msgEl, endpoint, isComment = false) {
   let selectedFile = null;
 
   dropEl.addEventListener("click", () => inputEl.click());
-
-  dropEl.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    dropEl.classList.add("bg-light");
-  });
-
-  dropEl.addEventListener("dragleave", () => dropEl.classList.remove("bg-light"));
-
+  dropEl.addEventListener("dragover", (e) => { e.preventDefault(); dropEl.classList.add("drag-on"); });
+  dropEl.addEventListener("dragleave", () => dropEl.classList.remove("drag-on"));
   dropEl.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropEl.classList.remove("bg-light");
+    dropEl.classList.remove("drag-on");
     selectedFile = e.dataTransfer.files[0];
-    msgEl.textContent = selectedFile.name;
+    msgEl.textContent = selectedFile?.name || "";
   });
 
   inputEl.addEventListener("change", () => {
@@ -54,16 +48,94 @@ async function handleCSVUpload(dropEl, inputEl, btnEl, msgEl, endpoint) {
     const fd = new FormData();
     fd.append("file", selectedFile);
 
-    const res = await fetch(`/upload/${endpoint}`, { method: "POST", body: fd });
-    const json = await res.json();
+    try {
+      const res = await fetch(`/upload/${endpoint}`, { method: "POST", body: fd });
+      const json = await res.json();
 
-    msgEl.textContent = json.message;
-    showToast(json.message, "success");
+      msgEl.textContent = json.message;
+      showToast(json.message, "success");
 
-    selectedFile = null;
+      if (isComment) {
+        // refresh preview from backend
+        const p = await fetch("/progress").then(r => r.json());
+        renderCommentPreviewBox(p.comments);
+      }
+
+      selectedFile = null;
+    } catch (err) {
+      showToast("Upload failed", "danger");
+    }
   });
 }
 
+// async function handleCSVUpload(dropEl, inputEl, btnEl, msgEl, endpoint) {
+//   let selectedFile = null;
+
+//   dropEl.addEventListener("click", () => inputEl.click());
+
+//   dropEl.addEventListener("dragover", (e) => {
+//     e.preventDefault();
+//     dropEl.classList.add("bg-light");
+//   });
+
+//   dropEl.addEventListener("dragleave", () => dropEl.classList.remove("bg-light"));
+
+//   dropEl.addEventListener("drop", (e) => {
+//     e.preventDefault();
+//     dropEl.classList.remove("bg-light");
+//     selectedFile = e.dataTransfer.files[0];
+//     msgEl.textContent = selectedFile.name;
+//   });
+
+//   inputEl.addEventListener("change", () => {
+//     selectedFile = inputEl.files[0];
+//     msgEl.textContent = selectedFile?.name || "";
+//   });
+
+//   btnEl.addEventListener("click", async () => {
+//     if (!selectedFile) return showToast("Please choose a CSV file", "warning");
+
+//     const fd = new FormData();
+//     fd.append("file", selectedFile);
+
+//     const res = await fetch(`/upload/${endpoint}`, { method: "POST", body: fd });
+//     const json = await res.json();
+
+//     msgEl.textContent = json.message;
+//     showToast(json.message, "success");
+
+//     selectedFile = null;
+//   });
+// }
+
+// ================================
+//  COMMENT PREVIEW HANDLER
+// ================================
+function renderCommentPreviewBox(list) {
+  const box = document.getElementById("commentPreviewBox");
+  box.innerHTML = "";
+
+  if (!list || list.length === 0) {
+    box.innerHTML = `<small class="text-muted">No comments loaded...</small>`;
+    return;
+  }
+
+  list.forEach((c, i) => {
+    const short = c.text.length > 40 ? c.text.substring(0, 40) + "..." : c.text;
+
+    const item = document.createElement("div");
+    item.className = "p-1 border-bottom";
+    item.style.cursor = "pointer";
+    item.innerHTML = `<b>${i + 1}.</b> ${short}`;
+
+    item.onclick = () => {
+      document.getElementById("commentDetailText").textContent = c.text;
+      new bootstrap.Modal(document.getElementById("commentModal")).show();
+    };
+
+    box.appendChild(item);
+  });
+}
 
 // ================================
 //  BIND UPLOAD COMPONENTS
@@ -81,7 +153,8 @@ handleCSVUpload(
   document.getElementById("commentsFileInput"),
   document.getElementById("uploadCommentsBtn"),
   document.getElementById("commentsUploadMsg"),
-  "comments"
+  "comments",
+  true
 );
 
 
@@ -94,6 +167,8 @@ const evt = new EventSource("/log/stream");
 evt.onmessage = (ev) => {
   const msg = JSON.parse(ev.data);
   logBox.textContent += `[${msg.type}] ${msg.item?.videoId || ""} ${msg.message || ""}\n`;
+
+  // Auto scroll to bottom
   logBox.scrollTop = logBox.scrollHeight;
 };
 
@@ -111,7 +186,7 @@ async function refreshProgress() {
   json.videos.forEach(v => {
     tbody.innerHTML += `
       <tr>
-        <td>${v.videoUrl || "-"}</td>
+        <td><a href="${v.videoUrl || "-"}" target="_blank">${v.videoUrl}</a></td>
         <td>${v.videoId}</td>
         <td>${v.status}</td>
         <td>${v.comment || ""}</td>

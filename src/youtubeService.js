@@ -3,8 +3,10 @@ const fs = require("fs");
 const path = require("path");
 const { google } = require("googleapis");
 const logger = require("./logger");
+const { pickSmartComments } = require("./utils");
 
 const TOKEN_PATH = path.join(__dirname, "../data/tokens.json");
+// const selected = pickSmartComments(store.comments, commentsPerVideo);
 
 function loadRefreshToken() {
   const data = JSON.parse(fs.readFileSync(TOKEN_PATH));
