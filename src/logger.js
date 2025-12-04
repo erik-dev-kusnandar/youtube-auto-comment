@@ -1,28 +1,17 @@
-// const winston = require("winston");
-// require("winston-daily-rotate-file");
-// const path = require("path");
-
-// const transport = new winston.transports.DailyRotateFile({
-//   filename: path.join("logs", "app-%DATE%.log"),
-//   datePattern: "YYYY-MM-DD",
-//   zippedArchive: false,
-//   maxFiles: "14d"
-// });
-
-// const logger = winston.createLogger({
-//   level: "info",
-//   format: winston.format.combine(
-//     winston.format.timestamp(),
-//     winston.format.printf(({ timestamp, level, message }) => {
-//       return `${timestamp} [${level}] ${message}`;
-//     })
-//   ),
-//   transports: [transport, new winston.transports.Console()]
-// });
-
-// module.exports = logger;
-
 const winston = require("winston");
+// src/logger.js
+const { createLogger, format, transports } = require("winston");
+const path = require("path");
+const logsDir = path.join(__dirname, "../logs");
+const fs = require("fs");
+if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir);
+
+// const logger = createLogger({
+//   level: "info",
+//   format: format.combine(format.timestamp(), format.printf((i) => `${i.timestamp} [${i.level}] ${i.message}`)),
+//   transports: [new transports.Console(), new transports.File({ filename: path.join(logsDir, "app.log") })],
+// });
+// module.exports = logger;
 
 const logger = winston.createLogger({
   level: "info",

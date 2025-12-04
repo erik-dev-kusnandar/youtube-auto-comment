@@ -48,6 +48,32 @@ function pickSmartComments(comments, count) {
   return result;
 }
 
-module.exports = { pickSmartComments };
+// src/utils.js
+
+// smart pick: non-duplicate per video, if comments < count then repeat randomly
+function pickSmartComments(comments, count) {
+  const pool = comments.map(c => c.text);
+  if (!pool.length) return [];
+
+  // shuffle
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+
+  if (shuffled.length >= count) {
+    return shuffled.slice(0, count);
+  }
+
+  const result = [...shuffled];
+  while (result.length < count) {
+    result.push(pool[Math.floor(Math.random() * pool.length)]);
+  }
+  return result;
+}
+
+function randomDelay(minMs, maxMs) {
+  return Math.floor(Math.random() * (maxMs - minMs + 1) + minMs);
+}
+
+
+module.exports = { pickSmartComments, randomDelay };
 module.exports = { extractVideoId };
 // End of src/utils.js

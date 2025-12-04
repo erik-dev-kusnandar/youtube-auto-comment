@@ -2,41 +2,44 @@
 const fs = require("fs");
 const path = require("path");
 
-const dataFile = path.join(__dirname, "../data/store.json");
+const DATA_FILE = path.join(__dirname, "../data/store.json");
+const TOKENS_FILE = path.join(__dirname, "../data/tokens.json");
 
-// ensure file exists
-if (!fs.existsSync(dataFile)) {
-  fs.writeFileSync(
-    dataFile,
-    JSON.stringify({ videos: [], comments: [] }, null, 2)
-  );
+function ensure() {
+  if (!fs.existsSync(path.join(__dirname, "../data"))) {
+    fs.mkdirSync(path.join(__dirname, "../data"));
+  }
+  if (!fs.existsSync(DATA_FILE)) {
+    fs.writeFileSync(
+      DATA_FILE,
+      JSON.stringify({ videos: [], comments: [], hourly: { count: 0, resetAt: 0 } }, null, 2)
+    );
+  }
 }
 
 function load() {
-  return JSON.parse(fs.readFileSync(dataFile));
+  ensure();
+  return JSON.parse(fs.readFileSync(DATA_FILE));
 }
 
 function save(data) {
-  fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
 module.exports = {
   getAll() {
     return load();
   },
-
   saveVideos(list) {
     const data = load();
     data.videos = list;
     save(data);
   },
-
   saveComments(list) {
     const data = load();
     data.comments = list;
     save(data);
   },
-
   updateVideoStatus(videoId, status, comment = "") {
     const data = load();
     const v = data.videos.find((x) => x.videoId === videoId);
@@ -46,4 +49,11 @@ module.exports = {
     }
     save(data);
   },
+  readStoreFile() {
+    return load();
+  },
+  saveStoreFile(data) {
+    save(data);
+  },
+  TOKEN_PATH: TOKENS_FILE,
 };

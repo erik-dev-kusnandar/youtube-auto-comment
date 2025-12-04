@@ -36,60 +36,6 @@ app.get("/progress", (req, res) => {
   res.json(store.getAll());
 });
 
-// app.get("/start", async (req, res) => {
-//     res.json({ ok: true });
-
-//     const data = store.getAll();
-//     const comments = data.comments;
-
-//     if (comments.length === 0) {
-//         pushLog({ type: "error", message: "No comments loaded!" });
-//         return;
-//     }
-
-//     const commentsPerVideo = Number(req.query.count || 1); // jumlah komen / video
-//     const minDelay = 60000; // 1 menit
-//     const maxDelay = 180000; // 3 menit
-
-//     for (const v of data.videos) {
-//         store.updateVideoStatus(v.videoId, "processing");
-//         pushLog({ type: "processing", item: v });
-
-//         for (let i = 0; i < commentsPerVideo; i++) {
-//             try {
-//                 // Random comment
-//                 const randomComment = comments[Math.floor(Math.random() * comments.length)].text;
-
-//                 await postComment(v.videoId, randomComment);
-
-//                 store.updateVideoStatus(v.videoId, "done", randomComment);
-
-//                 pushLog({
-//                     type: "done",
-//                     item: v,
-//                     comment: randomComment
-//                 });
-
-//                 // Random delay between posts
-//                 const randomWait = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
-//                 pushLog({ type: "delay", message: `Waiting ${Math.floor(randomWait / 1000)}s before next comment…` });
-
-//                 await new Promise(r => setTimeout(r, randomWait));
-
-//             } catch (err) {
-//                 store.updateVideoStatus(v.videoId, "error");
-//                 pushLog({
-//                     type: "error",
-//                     item: v,
-//                     message: err.message
-//                 });
-//             }
-//         }
-//     }
-
-//     pushLog({ type: "finished" });
-// });
-
 app.get("/start", async (req, res) => {
     res.json({ ok: true });
 

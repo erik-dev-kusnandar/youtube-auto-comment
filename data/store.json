@@ -1,19 +1,25 @@
 {
   "videos": [
     {
-      "videoUrl": "https://www.youtube.com/watch?v=rOpek5F0cac",
+      "url": "https://www.youtube.com/watch?v=rOpek5F0cac",
       "videoId": "rOpek5F0cac",
-      "status": "pending",
-      "comment": ""
+      "status": "done",
+      "comment": "Bodor Keren banget kontennya sahabat 💯"
     },
     {
-      "videoUrl": "https://www.youtube.com/shorts/B8Cq3oL2zPM",
+      "url": "https://www.youtube.com/shorts/B8Cq3oL2zPM",
       "videoId": "B8Cq3oL2zPM",
-      "status": "pending",
-      "comment": ""
+      "status": "done",
+      "comment": "Lucu Mantap videonya! 🔥"
     },
     {
-      "videoUrl": "https://www.youtube.com/watch?v=qPJP5IFeoZA&list=RDqPJP5IFeoZA&start_radio=1",
+      "url": "https://www.youtube.com/watch?v=qPJP5IFeoZA&list=RDqPJP5IFeoZA&start_radio=1",
+      "videoId": "qPJP5IFeoZA",
+      "status": "done",
+      "comment": "Bodor Keren banget kontennya sahabat 💯"
+    },
+    {
+      "url": "https://youtu.be/qPJP5IFeoZA?list=RDqPJP5IFeoZA",
       "videoId": "qPJP5IFeoZA",
       "status": "pending",
       "comment": ""
@@ -21,13 +27,10 @@
   ],
   "comments": [
     {
-      "text": "Mantap videonya! 🔥"
+      "text": "Lucu Mantap videonya! 🔥"
     },
     {
-      "text": "Informasi ini \n    sangat bermanfaat 🙌\nsekali"
-    },
-    {
-      "text": "Keren banget kontennya sahabat 💯"
+      "text": "Bodor Keren banget kontennya sahabat 💯"
     }
   ]
 }
