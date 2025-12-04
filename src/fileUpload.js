@@ -1,77 +1,80 @@
+// src/fileUpload.js
 const express = require("express");
 const multer = require("multer");
-const csv = require("csv-parser");
-const fs = require("fs");
 const path = require("path");
-const store = require("./dataStore");
+const fs = require("fs");
+const Papa = require("papaparse");
 
-const router = express.Router();
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ dest: path.join(__dirname, "../uploads") });
 
-function parseCSV(filePath) {
-  return new Promise((resolve) => {
-    const results = [];
-    fs.createReadStream(filePath)
-      .pipe(csv())
-      .on("data", (row) => results.push(row))
-      .on("end", () => resolve(results));
-  });
+function parseCSV(pathToFile) {
+  const raw = fs.readFileSync(pathToFile, "utf8");
+  const parsed = Papa.parse(raw, { header: true, skipEmptyLines: true });
+  return parsed.data;
 }
 
-function extractVideoId(urlOrId) {
-  if (!urlOrId) return null;
+module.exports = ({ pushLog, store }) => {
+  const router = express.Router();
 
-  // Case: 11-char ID
-  if (/^[a-zA-Z0-9_-]{11}$/.test(urlOrId)) return urlOrId;
+  router.post("/videos", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file" });
 
-  // youtu.be/VIDEOID
-  if (urlOrId.includes("youtu.be")) {
-    return urlOrId.split("/").pop().substring(0, 11);
-  }
+      const rows = parseCSV(req.file.path);
+      // accept header video_url or videoId
+      const videos = rows
+        .map((r, idx) => {
+          const url = r.video_url || r.videoUrl || r.videoId || r.video_id;
+          if (!url) return null;
+          // extract videoId if full url
+          let vid = url;
+          try {
+            const u = new URL(url);
+            if (u.searchParams && u.searchParams.get("v")) {
+              vid = u.searchParams.get("v");
+            } else {
+              // short URLs: /shorts/<id> or youtu.be/<id>
+              const p = u.pathname.split("/").filter(Boolean);
+              vid = p[p.length - 1];
+            }
+          } catch (e) {
+            // not a url, assume raw id
+            vid = url.trim();
+          }
+          return { url: url.trim(), videoId: vid.trim(), status: "pending", comment: "" };
+        })
+        .filter(Boolean);
 
-  // youtube.com/watch?v=VIDEOID
-  if (urlOrId.includes("v=")) {
-    return urlOrId.split("v=")[1].substring(0, 11);
-  }
-
-  return null;
-}
-
-router.post("/videos", upload.single("file"), async (req, res) => {
-  const rows = await parseCSV(req.file.path);
-
-  const videos = rows.map((r) => {
-    const url = r.video_url || r.url || "";
-    const id = extractVideoId(url);
-    return {
-      url,
-      videoId: id,
-      status: id ? "pending" : "invalid",
-      comment: ""
-    };
+      store.saveVideos(videos);
+      pushLog({ type: "info", message: `Uploaded ${videos.length} videos` });
+      return res.json({ message: `Uploaded ${videos.length} videos` });
+    } catch (err) {
+      pushLog({ type: "error", message: "Upload failed: " + err.message });
+      return res.status(500).json({ message: "Upload failed" });
+    }
   });
 
-  store.saveVideos(videos);
+  router.post("/comments", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file" });
+      const rows = parseCSV(req.file.path);
 
-  res.json({
-    ok: true,
-    message: `Uploaded ${videos.length} videos 🚀`
+      // support quoted multiline values (Papaparse header:true handles it)
+      const comments = rows
+        .map((r) => {
+          const txt = r.comment_text || r.comment || r.text;
+          return txt ? { text: txt } : null;
+        })
+        .filter(Boolean);
+
+      store.saveComments(comments);
+      pushLog({ type: "info", message: `Uploaded ${comments.length} comments` });
+      return res.json({ message: `Uploaded ${comments.length} comments` });
+    } catch (err) {
+      pushLog({ type: "error", message: "Upload failed: " + err.message });
+      return res.status(500).json({ message: "Upload failed" });
+    }
   });
-});
 
-router.post("/comments", upload.single("file"), async (req, res) => {
-  const rows = await parseCSV(req.file.path);
-
-  const comments = rows.map((r) => ({
-    text: r.comment_text || ""
-  }));
-
-  store.saveComments(comments);
-
-  res.json({
-    ok: true,
-    message: `Uploaded ${comments.length} comments 💬`
-  });
-});
-
-module.exports = router;
+  return router;
+};
