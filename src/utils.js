@@ -33,39 +33,23 @@ function extractVideoId(input) {
 
 // Smart Random Comment Picker (tanpa duplikat tiap video)
 function pickSmartComments(comments, count) {
-  const shuffled = [...comments].sort(() => Math.random() - 0.5);
-
-  // Jika komentar kurang dari count → looping ulang tapi tetap random
-  if (shuffled.length >= count) {
-    return shuffled.slice(0, count);
-  }
-
-  let result = [...shuffled];
-  while (result.length < count) {
-    result.push(shuffled[Math.floor(Math.random() * shuffled.length)]);
-  }
-
-  return result;
-}
-
-// src/utils.js
-
-// smart pick: non-duplicate per video, if comments < count then repeat randomly
-function pickSmartComments(comments, count) {
-  const pool = comments.map(c => c.text);
+  const pool = comments.map(c => c.text);   // <- ini penting karena comments berisi object
   if (!pool.length) return [];
 
-  // shuffle
+  // Shuffle random
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
 
+  // Jika jumlah komentar cukup
   if (shuffled.length >= count) {
     return shuffled.slice(0, count);
   }
 
+  // Jika kurang → isi ulang secara random
   const result = [...shuffled];
   while (result.length < count) {
     result.push(pool[Math.floor(Math.random() * pool.length)]);
   }
+
   return result;
 }
 
@@ -74,6 +58,9 @@ function randomDelay(minMs, maxMs) {
 }
 
 
-module.exports = { pickSmartComments, randomDelay };
-module.exports = { extractVideoId };
+module.exports = {
+  extractVideoId,
+  pickSmartComments,
+  randomDelay
+};
 // End of src/utils.js

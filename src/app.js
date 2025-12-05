@@ -30,7 +30,9 @@ app.get("/log/stream", (req, res) => {
   });
 });
 
-app.use("/upload", uploader);
+// app.use("/upload", uploader);
+app.use("/upload", uploader({ pushLog, store }));
+
 
 app.get("/progress", (req, res) => {
   res.json(store.getAll());
