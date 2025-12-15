@@ -1,36 +1,30 @@
 {
   "videos": [
     {
-      "url": "https://www.youtube.com/watch?v=rOpek5F0cac",
-      "videoId": "rOpek5F0cac",
-      "status": "pending",
-      "comment": ""
+      "url": "https://www.youtube.com/shorts/GKD1LPVxMmA",
+      "videoId": "GKD1LPVxMmA",
+      "status": "done",
+      "comment": "Suka banget suasana tenangnya, bikin rileks sambil lihat aktivitas sekitar tanpa gangguan suara. Cocok buat yang pengen santai aja."
     },
     {
-      "url": "https://www.youtube.com/shorts/B8Cq3oL2zPM",
-      "videoId": "B8Cq3oL2zPM",
-      "status": "pending",
-      "comment": ""
-    },
-    {
-      "url": "https://www.youtube.com/watch?v=qPJP5IFeoZA&list=RDqPJP5IFeoZA&start_radio=1",
-      "videoId": "qPJP5IFeoZA",
-      "status": "pending",
-      "comment": ""
-    },
-    {
-      "url": "https://youtu.be/qPJP5IFeoZA?list=RDqPJP5IFeoZA",
-      "videoId": "qPJP5IFeoZA",
-      "status": "pending",
-      "comment": ""
+      "url": "https://www.youtube.com/shorts/uzGzqVVrSNU",
+      "videoId": "uzGzqVVrSNU",
+      "status": "done",
+      "comment": "Suara burungnya bikin suasana pagi jadi lebih tenang. Suka banget lihat alam yang alami kayak gini."
     }
   ],
   "comments": [
     {
-      "text": "Lucu Mantap videonya! 🔥"
+      "text": "Keren banget videonya: {title} 🔥"
     },
     {
-      "text": "Bodor Keren banget kontennya sahabat 💯"
+      "text": "Bagian ini menarik banget: {desc}"
+    },
+    {
+      "text": "Top konten sih ini 👍 {title}"
+    },
+    {
+      "text": "Penjelasannya dapet banget, apalagi pas bahas {title}"
     }
   ]
 }
