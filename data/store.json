@@ -1,16 +1,16 @@
 {
   "videos": [
     {
-      "url": "https://www.youtube.com/shorts/GKD1LPVxMmA",
-      "videoId": "GKD1LPVxMmA",
+      "url": "https://www.youtube.com/watch?v=vC1DJ5yZ9W0",
+      "videoId": "vC1DJ5yZ9W0",
       "status": "done",
-      "comment": "Suka banget suasana tenangnya, bikin rileks sambil lihat aktivitas sekitar tanpa gangguan suara. Cocok buat yang pengen santai aja."
+      "comment": "Anak-anaknya jago banget, seru lihat mereka balap pocket bike sekecil itu! Suasananya keren banget."
     },
     {
-      "url": "https://www.youtube.com/shorts/uzGzqVVrSNU",
-      "videoId": "uzGzqVVrSNU",
+      "url": "https://www.youtube.com/watch?v=cYJ8j8x-xYE",
+      "videoId": "cYJ8j8x-xYE",
       "status": "done",
-      "comment": "Suara burungnya bikin suasana pagi jadi lebih tenang. Suka banget lihat alam yang alami kayak gini."
+      "comment": "Pemandangan matahari terbit di laut ini beneran bikin tenang. Warnanya keren banget!"
     }
   ],
   "comments": [
@@ -25,6 +25,92 @@
     },
     {
       "text": "Penjelasannya dapet banget, apalagi pas bahas {title}"
+    }
+  ],
+  "postingLogs": [
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "No token file",
+      "time": "2025-12-15T13:02:56.106Z",
+      "status": "error"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "No token file",
+      "time": "2025-12-15T13:03:53.972Z",
+      "status": "error"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "No token file",
+      "time": "2025-12-15T13:04:35.639Z",
+      "status": "error"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "No token file",
+      "status": "error",
+      "time": "2025-12-15T13:14:25.220Z"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "No token file",
+      "status": "error",
+      "time": "2025-12-15T13:14:55.919Z"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "No token file",
+      "status": "error",
+      "time": "2025-12-15T13:15:39.365Z"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "No token file",
+      "status": "error",
+      "time": "2025-12-15T13:16:21.197Z"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "No token file",
+      "status": "error",
+      "time": "2025-12-15T13:17:21.057Z"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "status": "error",
+      "message": "No token file",
+      "time": "2025-12-15T13:21:45.314Z"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "status": "error",
+      "message": "No token file",
+      "time": "2025-12-15T13:22:33.620Z"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "status": "error",
+      "message": "No token file",
+      "time": "2025-12-15T13:23:30.947Z"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Pemandangannya keren banget, sunrise di atas laut memang selalu bikin tenang.",
+      "time": "2025-12-15T13:43:46.871Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Anak-anaknya jago banget, seru lihat mereka balap pocket bike sekecil itu! Suasananya keren banget.",
+      "time": "2025-12-15T13:44:44.906Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Pemandangan matahari terbit di laut ini beneran bikin tenang. Warnanya keren banget!",
+      "time": "2025-12-15T13:45:37.663Z",
+      "status": "done"
     }
   ]
 }

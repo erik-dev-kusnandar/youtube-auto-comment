@@ -377,7 +377,7 @@ async function loadCommentPreview() {
     comments.forEach((c, idx) => {
       const li = document.createElement("li");
       li.className = "list-group-item";
-      li.textContent = `${idx+1}. ${c.text}`;
+      li.textContent = `${idx + 1}. ${c.text}`;
       list.appendChild(li);
     });
   } catch (e) {
@@ -388,12 +388,35 @@ loadCommentPreview();
 
 // START / STOP handlers
 document.getElementById("startBtn").addEventListener("click", async () => {
-  const count = document.getElementById("commentsPerVideo").value || 1;
-  const delayMs = document.getElementById("delayPerComment").value || 3000;
-  
+
+  const postingDuration = Number(
+    document.getElementById("postingDuration").value || 120000
+  );
+
+  const minDelay = Number(
+    document.getElementById("minDelayPerComment").value || 30000
+  );
+
+  const maxDelay = Number(
+    document.getElementById("maxDelayPerComment").value || 60000
+  );
+
+  const params = new URLSearchParams({
+    postingDuration,
+    minDelay,
+    maxDelay,
+  });
+
+
   try {
-    const res = await fetch(`/start?count=${count}&delayMs=${delayMs}`);
-    const js = await res.json();
+    // const res = await fetch(`/start?count=${count}&delayMs=${delayMs}`);
+    // const js = await res.json();
+
+    const res = await fetch(`/start?${params.toString()}`);
+    const json = await res.json();
+
+    console.log("START RESPONSE:", json);
+
     showToast("Posting started 🚀", "primary");
   } catch (e) {
     showToast("Failed to start", "danger");

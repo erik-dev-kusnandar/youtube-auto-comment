@@ -1,3 +1,4 @@
+// src/youtube/youtubeWorker.js
 const store = require("../dataStore");
 const logger = require("../logger");
 const { postComment, fetchVideoMetadata } = require("./youtubeService");
@@ -7,81 +8,82 @@ const { rewriteComment } = require("../ai/aiCommentService");
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const rand = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
 
-async function startYoutubeWorker(opts = {}, pushLog = () => { }) {
-  const data = store.getAll();
-  const videos = data.videos || [];
-  const comments = data.comments || [];
+const usedPairs = new Set();
+const isDuplicate = (videoId, comment) => {
+  const key = `${videoId}||${comment}`;
+  if (usedPairs.has(key)) return true;
+  usedPairs.add(key);
+  return false;
+};
 
-  if (!comments.length) {
-    logger.error("No comments loaded!");
+async function startYoutubeWorker(opts = {}, pushLog = () => {}) {
+  const { videos = [], comments = [] } = store.getAll();
+
+  if (!videos.length || !comments.length) {
+    pushLog({ type: "error", message: "Videos or comments empty" });
     return;
   }
 
-  const perVideo = Number(opts.count || 1);
+  const postingDuration = Number(opts.postingDuration || 600000); // default 10 menit
   const minDelay = Number(opts.minDelay || 60000);
   const maxDelay = Number(opts.maxDelay || 180000);
-  const hourlyLimit = Number(opts.hourlyLimit || 100);
 
-  let postedThisHour = 0;
+  const endTime = Date.now() + postingDuration;
 
+  pushLog({ type: "info", message: `Worker started for ${postingDuration} ms` });
   logger.info("YouTube worker started");
 
-  // =========================
-  // ✅ SATU-SATUNYA LOOP VIDEO
-  // =========================
-  for (const v of videos) {
-    if (!v.videoId) continue;
+  while (Date.now() < endTime) {
+    const video = videos[Math.floor(Math.random() * videos.length)];
+    const commentTpl = comments[Math.floor(Math.random() * comments.length)];
 
     try {
-      store.updateVideoStatus(v.videoId, "processing");
+      store.updateVideoStatus(video.videoId, "processing");
 
-      const meta = await fetchVideoMetadata(v.videoId);
-      const pick = comments[Math.floor(Math.random() * comments.length)];
+      const meta = await fetchVideoMetadata(video.videoId);
+      let finalComment = buildCommentFromMetadata(meta, commentTpl.text);
 
-      // STEP B
-      let finalComment = buildCommentFromMetadata(meta, pick.text);
-
-      // STEP C (AI OPTIONAL)
+      // AI optional
       if (process.env.ENABLE_AI_COMMENT === "true") {
         try {
           const ai = await rewriteComment({
             title: meta.title,
-            description: meta.description.substring(0, 300),
+            description: meta.description?.slice(0, 300) || "",
             draft: finalComment,
           });
-
-          if (ai && ai.length < 300) {
-            finalComment = ai;
-            logger.info(`[AI] ${finalComment}`);
-          }
-        } catch (aiErr) {
-          logger.error(`AI error, fallback: ${aiErr.message}`);
+          if (ai && ai.length < 300) finalComment = ai;
+        } catch (e) {
+          logger.warn("AI fallback:", e.message);
         }
       }
 
-      logger.info(`[FINAL COMMENT] ${finalComment}`);
-      pushLog({ type: "process...", videoId: "videoId",  comment: finalComment });
-      const randomWait = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
-      pushLog({ type: "delay", message: `Waiting ${Math.floor(randomWait / 1000)}s before next comment…` });
+      if (isDuplicate(video.videoId, finalComment)) {
+        logger.warn("Duplicate skipped");
+      } else {
+        await postComment(video.videoId, finalComment);
 
-      // ⛔ UNCOMMENT SAAT PRODUKSI
-      await postComment(v.videoId, finalComment);
+        store.updateVideoStatus(video.videoId, "done", finalComment);
+        store.addPostingLog({
+          videoId: video.videoId,
+          comment: finalComment,
+          time: new Date().toISOString(),
+          status: "done",
+        });
 
-      store.updateVideoStatus(v.videoId, "done", finalComment);
-
-      // const delay = rand(minDelay, maxDelay);
-      // Random delay between posts
-
-      await new Promise(r => setTimeout(r, randomWait));
-
-      await wait(randomWait);
-
+        pushLog({ type: "done", item: video, comment: finalComment });
+      }
     } catch (err) {
-      logger.error(`Worker error ${v.videoId}: ${err.message}`);
-      store.updateVideoStatus(v.videoId, "error");
+      store.updateVideoStatus(video.videoId, "error");
+      pushLog({ type: "error", item: video, message: err.message });
+      logger.error(err.message);
     }
+
+    const delay = rand(minDelay, maxDelay);
+    pushLog({ type: "delay", message: `Waiting ${Math.floor(delay / 1000)}s` });
+    await wait(delay);
   }
 
+  pushLog({ type: "finished", message: "Posting duration finished" });
   logger.info("YouTube worker finished");
 }
 

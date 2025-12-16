@@ -65,14 +65,12 @@
 
         <div class="card">
           <div class="card-body">
-            <label class="form-label">Comments per video:</label>
-            <input id="commentsPerVideo" type="number" class="form-control mb-2" value="1" min="1" />
-            <label class="form-label">Delay per comment (ms):</label>
-            <input id="delayPerComment" type="number" class="form-control mb-3" value="3000" />
+            <label class="form-label">Posting duration (ms):</label>
+            <input id="postingDuration" type="number" class="form-control mb-3" value="120000" />
             <label class="form-label">MinDelay per comment (ms):</label>
-            <input id="minDelayPerComment" type="number" class="form-control mb-3" value="60000" />
+            <input id="minDelayPerComment" type="number" class="form-control mb-3" value="30000" />
             <label class="form-label">MaxDelay per comment (ms):</label>
-            <input id="maxDelayPerComment" type="number" class="form-control mb-3" value="180000" />
+            <input id="maxDelayPerComment" type="number" class="form-control mb-3" value="60000" />
             <button id="startBtn" class="btn btn-success w-100 mb-2">🚀 Start Posting</button>
             <button id="stopBtn" class="btn btn-secondary w-100">⏸ Stop (UI only)</button>
           </div>

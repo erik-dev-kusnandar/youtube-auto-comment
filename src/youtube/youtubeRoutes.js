@@ -20,17 +20,20 @@ module.exports = (pushLog) => {
 
   // start worker with optional query params
   router.get("/start", (req, res) => {
+    
     const opts = {
-      count: req.query.count || 1,
-      minDelay: req.query.minDelay || 60000,
-      maxDelay: req.query.maxDelay || 180000,
-      hourlyLimit: req.query.hourlyLimit || 100
+      postingDuration: Number(req.query.postingDuration),
+      minDelay: Number(req.query.minDelay),
+      maxDelay: Number(req.query.maxDelay),
     };
+
     // run worker async (do not block)
     startYoutubeWorker(opts, pushLog).catch(e => {
       console.error("Worker error:", e.message);
     });
-    res.json({ ok: true, message: "Worker started" });
+
+    res.json({ ok: true, message: "Worker started with duration mode" });
+
   });
 
   router.get("/test-comment", async (req, res) => {
