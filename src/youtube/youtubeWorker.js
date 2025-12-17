@@ -16,7 +16,9 @@ const isDuplicate = (videoId, comment) => {
   return false;
 };
 
-async function startYoutubeWorker(opts = {}, pushLog = () => {}) {
+let videoIndex = 0;
+
+async function startYoutubeWorker(opts = {}, pushLog = () => { }) {
   const { videos = [], comments = [] } = store.getAll();
 
   if (!videos.length || !comments.length) {
@@ -28,13 +30,32 @@ async function startYoutubeWorker(opts = {}, pushLog = () => {}) {
   const minDelay = Number(opts.minDelay || 60000);
   const maxDelay = Number(opts.maxDelay || 180000);
 
+  if (store.isWorkerRunning()) {
+    pushLog({ type: "warn", message: "Worker already running, skip start" });
+    return;
+  }
+
   const endTime = Date.now() + postingDuration;
+  store.startWorker(postingDuration);
+
 
   pushLog({ type: "info", message: `Worker started for ${postingDuration} ms` });
   logger.info("YouTube worker started");
 
   while (Date.now() < endTime) {
-    const video = videos[Math.floor(Math.random() * videos.length)];
+
+    // ⛔ STOP REQUEST CHECK
+    if (store.shouldStop()) {
+      pushLog({ type: "warn", message: "Stop requested, worker halted" });
+      store.finishWorker();
+      return;
+    }
+
+    // const video = videos[Math.floor(Math.random() * videos.length)];
+
+    const video = videos[videoIndex];
+    videoIndex = (videoIndex + 1) % videos.length;
+
     const commentTpl = comments[Math.floor(Math.random() * comments.length)];
 
     try {
@@ -58,11 +79,16 @@ async function startYoutubeWorker(opts = {}, pushLog = () => {}) {
       }
 
       if (isDuplicate(video.videoId, finalComment)) {
-        logger.warn("Duplicate skipped");
+        pushLog({
+          type: "warn",
+          item: video,
+          message: "Duplicate comment skipped",
+        });
       } else {
         await postComment(video.videoId, finalComment);
 
         store.updateVideoStatus(video.videoId, "done", finalComment);
+
         store.addPostingLog({
           videoId: video.videoId,
           comment: finalComment,
@@ -71,7 +97,9 @@ async function startYoutubeWorker(opts = {}, pushLog = () => {}) {
         });
 
         pushLog({ type: "done", item: video, comment: finalComment });
+        logger.info(`Comment posted on video ${video.videoId}`);
       }
+
     } catch (err) {
       store.updateVideoStatus(video.videoId, "error");
       pushLog({ type: "error", item: video, message: err.message });
@@ -81,7 +109,11 @@ async function startYoutubeWorker(opts = {}, pushLog = () => {}) {
     const delay = rand(minDelay, maxDelay);
     pushLog({ type: "delay", message: `Waiting ${Math.floor(delay / 1000)}s` });
     await wait(delay);
+
   }
+
+  store.stopWorker();
+  store.finishWorker();
 
   pushLog({ type: "finished", message: "Posting duration finished" });
   logger.info("YouTube worker finished");

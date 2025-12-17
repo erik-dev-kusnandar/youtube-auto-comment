@@ -20,7 +20,7 @@ module.exports = (pushLog) => {
 
   // start worker with optional query params
   router.get("/start", (req, res) => {
-    
+
     const opts = {
       postingDuration: Number(req.query.postingDuration),
       minDelay: Number(req.query.minDelay),
@@ -34,6 +34,17 @@ module.exports = (pushLog) => {
 
     res.json({ ok: true, message: "Worker started with duration mode" });
 
+  });
+
+  router.get("/status", (req, res) => {
+    res.json(store.getWorkerState());
+  });
+
+  router.post("/stop", (req, res) => {
+    store.stopWorker();
+    store.requestStop();
+
+    res.json({ ok: true });
   });
 
   router.get("/test-comment", async (req, res) => {

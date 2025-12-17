@@ -1,16 +1,22 @@
 {
   "videos": [
     {
-      "url": "https://www.youtube.com/watch?v=vC1DJ5yZ9W0",
-      "videoId": "vC1DJ5yZ9W0",
+      "url": "https://www.youtube.com/watch?v=OyVD7G3bclw",
+      "videoId": "OyVD7G3bclw",
       "status": "done",
-      "comment": "Anak-anaknya jago banget, seru lihat mereka balap pocket bike sekecil itu! Suasananya keren banget."
+      "comment": "Gila, suasana kota futuristik di Cyberpunk 2077 bener-bener kerasa banget. Seru liat cara lo bertahan di situ!"
     },
     {
-      "url": "https://www.youtube.com/watch?v=cYJ8j8x-xYE",
-      "videoId": "cYJ8j8x-xYE",
-      "status": "done",
-      "comment": "Pemandangan matahari terbit di laut ini beneran bikin tenang. Warnanya keren banget!"
+      "url": "https://www.youtube.com/watch?v=IcXbKW0kYTE",
+      "videoId": "IcXbKW0kYTE",
+      "status": "pending",
+      "comment": ""
+    },
+    {
+      "url": "https://www.youtube.com/shorts/puCeE_OB658",
+      "videoId": "puCeE_OB658",
+      "status": "pending",
+      "comment": ""
     }
   ],
   "comments": [
@@ -27,6 +33,12 @@
       "text": "Penjelasannya dapet banget, apalagi pas bahas {title}"
     }
   ],
+  "worker": {
+    "running": true,
+    "startTime": 1765906022779,
+    "duration": 120000,
+    "stopRequested": false
+  },
   "postingLogs": [
     {
       "videoId": "vC1DJ5yZ9W0",
@@ -110,6 +122,174 @@
       "videoId": "cYJ8j8x-xYE",
       "comment": "Pemandangan matahari terbit di laut ini beneran bikin tenang. Warnanya keren banget!",
       "time": "2025-12-15T13:45:37.663Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Seru banget liat balap pocket bike buat yang usianya masih kecil, penjelasannya juga gampang dipahami. Kompetisinya bikin deg-degan!",
+      "time": "2025-12-16T11:09:25.242Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Waktu matahari terbit di laut ini bener-bener bikin tenang. Warnanya keren banget!",
+      "time": "2025-12-16T11:09:25.658Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Wah, pemandangan matahari terbitnya bikin tenang banget. Langitnya juga keren banget!",
+      "time": "2025-12-16T11:10:11.344Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Anak-anaknya keren banget, balap pocket bike-nya seru dan skill-nya nggak main-main! Suasana lombanya juga jadi makin hidup.",
+      "time": "2025-12-16T11:10:20.999Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Warna langit saat matahari terbit di atas laut ini bener-bener bikin tenang. Suasananya damai banget.",
+      "time": "2025-12-16T11:10:52.363Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Wah, seru banget lihat bocah-bocah balap pocket bike secepat ini! Kompetisinya keren banget.",
+      "time": "2025-12-16T11:11:05.741Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Warna langitnya keren banget pas matahari terbit di laut. Bikin tenang lihatnya.",
+      "time": "2025-12-16T11:11:45.410Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Wah, pemandangannya bener-bener bikin tenang ya, sunrise-nya cakep banget.",
+      "time": "2025-12-16T11:11:45.967Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Wah, pemandangannya keren banget, sunrise-nya bikin tenang deh.",
+      "time": "2025-12-16T11:12:18.201Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Anak-anaknya jago banget balapnya, seru liatnya! Gak nyangka usia segitu udah bisa ngebut kayak gini.",
+      "time": "2025-12-16T11:12:36.800Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Anak-anaknya keliatan serius banget balapnya, seru liatnya! Gak nyangka usia segitu udah jago banget ngendarain pocket bike.",
+      "time": "2025-12-16T11:13:15.353Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Anak-anaknya jago banget balap pocket bike, seru liatnya! Suasana kompetisinya juga rame dan seru.",
+      "time": "2025-12-16T11:13:28.874Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Warna langitnya keren banget pas matahari terbit di laut. Bikin tenang lihatnya.",
+      "time": "2025-12-16T17:27:50.210Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Pemandangan matahari terbit di lautnya bener-bener keren, apalagi langitnya yang warnanya cantik banget. Rasanya tenang banget nonton ini.",
+      "time": "2025-12-16T17:28:37.346Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Wah, pemandangan matahari terbitnya keren banget, bikin tenang!",
+      "time": "2025-12-16T17:29:14.594Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Anak-anaknya keren banget, serius balapnya! Seru lihat mereka gas pol di lintasan mini.",
+      "time": "2025-12-16T17:54:55.331Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Pemandangan matahari terbit di lautnya keren banget, bikin tenang. Langitnya juga cantik banget!",
+      "time": "2025-12-16T17:55:54.477Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Anak-anaknya jago banget ya, seru liat balapan mini begini! Suasana kompetisinya juga keren.",
+      "time": "2025-12-16T17:56:44.266Z",
+      "status": "done"
+    },
+    {
+      "videoId": "vC1DJ5yZ9W0",
+      "comment": "Seru banget lihat bocah-bocah kecil balapan pocket bike dengan semangat juang tinggi! Gak nyangka usia 7 tahun udah jago gini.",
+      "time": "2025-12-16T18:06:07.987Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Pemandangan matahari terbit di atas lautnya keren banget, langitnya juga indah banget. Rasanya tenang banget lihat ini.",
+      "time": "2025-12-16T18:06:55.739Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Wah, pemandangannya indah banget pas matahari terbit di laut. Bikin tenang lihat langitnya yang berwarna-warni.",
+      "time": "2025-12-16T18:07:48.626Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Wah, pemandangannya bener-bener bikin tenang ya. Sunrise-nya indah banget!",
+      "time": "2025-12-16T19:41:32.209Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Warna langit pas matahari terbit di atas lautnya keren banget. Bikin tenang lihatnya.",
+      "time": "2025-12-16T19:42:32.752Z",
+      "status": "done"
+    },
+    {
+      "videoId": "cYJ8j8x-xYE",
+      "comment": "Wah, pemandangannya bener-bener menenangkan saat matahari terbit di laut. Suasana pagi yang sempurna!",
+      "time": "2025-12-16T19:43:18.739Z",
+      "status": "done"
+    },
+    {
+      "videoId": "OyVD7G3bclw",
+      "comment": "Gila, suasana kotanya keren banget! Seru liat gimana lo bertahan di dunia Cyberpunk ini.",
+      "time": "2025-12-17T03:49:03.202Z",
+      "status": "done"
+    },
+    {
+      "videoId": "IcXbKW0kYTE",
+      "comment": "Akhirnya gelar perkara khusus ijazah Jokowi selesai juga, penasaran sama hasilnya. Semoga semuanya jelas dan transparan.",
+      "time": "2025-12-17T03:49:48.279Z",
+      "status": "done"
+    },
+    {
+      "videoId": "puCeE_OB658",
+      "comment": "Zulhas keliatan ogah banget jawab pertanyaan soal larangan Prabowo itu. Mungkin emang sengaja diem biar gak makin ribet.",
+      "time": "2025-12-17T03:50:23.865Z",
+      "status": "done"
+    },
+    {
+      "videoId": "OyVD7G3bclw",
+      "comment": "Gila, suasana kota futuristik di Cyberpunk 2077 bener-bener kerasa banget. Seru liat cara lo bertahan di situ!",
+      "time": "2025-12-17T03:52:52.901Z",
       "status": "done"
     }
   ]
