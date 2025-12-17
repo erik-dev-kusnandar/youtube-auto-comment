@@ -35,3 +35,11 @@ body {
 .toast-container {
   z-index: 99999;
 }
+
+.badge-merah {
+    background-color: #FF0000; /* Kode HEX untuk merah */
+    color: white; /* Untuk teks putih agar terbaca */
+    padding: 0.35em 0.65em; /* Padding standar badge */
+    border-radius: 0.25rem; /* Radius sudut */
+    font-size: 0.875em; /* Ukuran font standar */
+}
