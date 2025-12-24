@@ -37,8 +37,17 @@ async function postComment(videoId, text) {
         },
       },
     });
-    logger.info(`Comment posted → ${result.data.id} on ${videoId}`);
-    return result.data;
+
+    const commentId = result.data.id;
+    const moderationStatus = result.data.snippet?.topLevelComment?.snippet?.moderationStatus || "published";
+
+    logger.info(`Comment posted → ID: ${commentId} | Status: ${moderationStatus} | Video: ${videoId}`);
+
+    // Return both data and status for better tracking
+    return {
+      ...result.data,
+      moderationStatus
+    };
   } catch (error) {
     const msg = error?.errors?.[0]?.message || error.message || "Unknown error";
     logger.error("Failed to post comment: " + msg);
@@ -67,7 +76,7 @@ async function fetchVideoMetadata(videoId) {
   };
 }
 
-module.exports = { 
+module.exports = {
   postComment,
   fetchVideoMetadata
- };
+};

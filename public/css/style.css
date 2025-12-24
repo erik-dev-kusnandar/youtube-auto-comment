@@ -1,5 +1,6 @@
 body {
   background: #f4f5f7;
+  font-size: 13px;
 }
 
 .dropzone {
@@ -11,6 +12,7 @@ body {
   cursor: pointer;
   background: #fafbff;
   transition: .2s;
+  font: 1em sans-serif;
 }
 
 .dropzone:hover {
@@ -37,9 +39,35 @@ body {
 }
 
 .badge-merah {
-    background-color: #FF0000; /* Kode HEX untuk merah */
-    color: white; /* Untuk teks putih agar terbaca */
-    padding: 0.35em 0.65em; /* Padding standar badge */
-    border-radius: 0.25rem; /* Radius sudut */
-    font-size: 0.875em; /* Ukuran font standar */
+  background-color: #FF0000;
+  /* Kode HEX untuk merah */
+  color: white;
+  /* Untuk teks putih agar terbaca */
+  padding: 0.35em 0.65em;
+  /* Padding standar badge */
+  border-radius: 0.25rem;
+  /* Radius sudut */
+  font-size: 0.875em;
+  /* Ukuran font standar */
+}
+
+
+.btn {
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.form-control {
+  font-size: 13px;
+}
+
+#postingDuration,
+#minDelayPerComment,
+#maxDelayPerComment {
+  max-width: 140px;
+}
+
+.badge {
+  font-size: 11px;
+  padding: 4px 6px;
 }

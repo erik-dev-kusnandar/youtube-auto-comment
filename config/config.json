@@ -1,0 +1,16 @@
+{
+  "comment_engine": {
+    "use_context_ai": true,
+    "use_comment_ai": true
+  },
+  "sentiment": {
+    "enabled": true,
+    "source": "file",
+    "file": "./data/sentiments.json"
+  },
+  "post_mode": "dry",
+  "limits": {
+    "max_posts_per_run": 3,
+    "delay_ms": 120000
+  }
+}

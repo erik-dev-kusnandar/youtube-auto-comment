@@ -74,21 +74,72 @@ handleCSVUpload(
 // SSE log stream + auto-scroll
 const logBox = document.getElementById("logBox");
 let evt;
+
+// main.js - GANTI BAGIAN SSE
+const MAX_LOG_LINES = 100; // ✅ KURANGI DARI 500 KE 100
+const logLines = [];
+
 function connectSSE() {
   try {
     evt = new EventSource("/log/stream");
     evt.onmessage = (ev) => {
       const msg = JSON.parse(ev.data);
-      const text = `[${new Date().toLocaleTimeString()}] [${msg.type}] ${msg.item?.videoId || ""} ${msg.message || ""}\n`;
-      logBox.textContent += text;
-      logBox.scrollTop = logBox.scrollHeight; // auto-scroll
+      const time = new Date().toLocaleTimeString();
+      const rid = msg.runId ? `[${msg.runId.substring(0, 10)}] ` : "";
+
+      let line = "";
+
+      if (msg.type === "video") {
+        const d = msg.message?.decision || {};
+
+        // 🔍 DEBUG: Log what we receive from backend
+        console.log("🔍 FRONTEND received decision:", JSON.stringify(d, null, 2));
+
+        const sentimentInfo = d.sentiment_enabled
+          ? ` | Sentiment Mode=${d.sentimentMode || "none"} (${d.sentimentSource || "unknown"})`
+          : "";
+        const moderationStatus = msg.message?.moderationStatus || "unknown";
+        const statusIcon = moderationStatus === "published" ? "✅" :
+          moderationStatus === "heldForReview" ? "⏳" : "❓";
+        line = `[${time}] ${rid}[VIDEO] ${msg.item?.videoId || ""}
+ ├─ Pakai Context AI=${d.use_context ? "ON" : "OFF"} | Aktifkan Sentiment=${d.sentiment_enabled ? "ON" : "OFF"}${sentimentInfo} | Komen Pakai AI=${d.use_comment_ai ? "ON" : "OFF"}
+ ├─ Status: ${statusIcon} ${moderationStatus}
+ └─ ${(msg.message?.preview || "").substring(0, 80)}...`;
+      } else if (msg.type === "config") {
+        line = `[${time}] ${rid}[CONFIG] ${msg.message}`;
+      } else if (msg.type === "delay") {
+        line = `[${time}] ${rid}[DELAY] ${msg.message}`;
+      } else if (msg.type === "finished") {
+        line = `[${time}] ${rid}[✓ FINISHED] ${msg.message}`;
+      } else {
+        line = `[${time}] ${rid}[${msg.type.toUpperCase()}] ${msg.message || ""}`;
+      }
+
+      if (line) {
+        logLines.push(line);
+
+        // ✅ KEEP ONLY LAST 100 LINES
+        while (logLines.length > MAX_LOG_LINES) {
+          logLines.shift();
+        }
+
+        logBox.textContent = logLines.join("\n");
+        logBox.scrollTop = logBox.scrollHeight;
+      }
     };
-    evt.onerror = () => { console.warn("SSE error"); evt.close(); setTimeout(connectSSE, 3000); };
+
+    evt.onerror = () => {
+      console.warn("SSE error");
+      evt.close();
+      setTimeout(connectSSE, 3000);
+    };
   } catch (e) {
     console.error("SSE connect failed", e);
   }
 }
+
 connectSSE();
+
 
 // refresh progress table
 async function refreshProgress() {
@@ -104,7 +155,9 @@ async function refreshProgress() {
         <td>${index + 1}</td>
         <td><a href="${v.url || '#'}" target="_blank">${v.url || '-'}</a></td>
         <td>${v.videoId || ''}</td>
-        <td>${v.status || ''}</td>
+        <td>
+          ${renderStatus(v)}
+        </td>
         <td>${v.comment || ''}</td>
       `;
       tbody.appendChild(tr);
@@ -169,44 +222,6 @@ async function loadCommentPreview() {
 }
 
 loadCommentPreview();
-
-// START / STOP handlers
-// document.getElementById("startBtn").addEventListener("click", async () => {
-
-//   const postingDuration = Number(
-//     document.getElementById("postingDuration").value || 120000
-//   );
-
-//   const minDelay = Number(
-//     document.getElementById("minDelayPerComment").value || 30000
-//   );
-
-//   const maxDelay = Number(
-//     document.getElementById("maxDelayPerComment").value || 60000
-//   );
-
-//   const params = new URLSearchParams({
-//     postingDuration,
-//     minDelay,
-//     maxDelay,
-//   });
-
-
-//   try {
-//     const res = await fetch(`/start?${params.toString()}`);
-//     const json = await res.json();
-
-//     console.log("START RESPONSE:", json);
-
-//     showToast("Posting started 🚀", "primary");
-//   } catch (e) {
-//     showToast("Failed to start", "danger");
-//   }
-// });
-
-// document.getElementById("stopBtn").addEventListener("click", () => {
-//   showToast("Stopped (UI only)", "secondary");
-// });
 
 document.getElementById("clearLog").addEventListener("click", () => {
   logBox.textContent = "";
@@ -279,14 +294,31 @@ startBtn.addEventListener("click", async () => {
     document.getElementById("maxDelayPerComment").value || 60000
   );
 
-  const params = new URLSearchParams({
+  const runId = generateRunId();
+
+  const payload = {
     postingDuration,
     minDelay,
     maxDelay,
-  });
+    runId,
+    flowConfig: {
+      use_context: document.getElementById("toggleContextAI").checked,
+      use_comment_ai: document.getElementById("toggleCommentAI").checked,
+      sentiment: {
+        enabled: document.getElementById("toggleSentimentEnable").checked,
+        mode: document.getElementById("sentimentMode").value
+      }
+    }
+  };
+
+  console.log("Starting posting with payload:", payload);
 
   try {
-    const res = await fetch(`/start?${params.toString()}`);
+    const res = await fetch("/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
     const json = await res.json();
 
     console.log("START RESPONSE:", json);
@@ -301,3 +333,171 @@ stopBtn.addEventListener("click", async () => {
   await fetch("/stop", { method: "POST" });
   await pollWorkerStatus();
 });
+
+const dryRunBtn = document.getElementById("dryRunBtn");
+
+dryRunBtn.addEventListener("click", async () => {
+  console.log("🔥 DRY-RUN HIT");
+
+  const runId = generateRunId();
+
+  try {
+    showToast("Running dry-run preview…", "info");
+
+    const payload = {
+      runId,
+      flowConfig: {
+        use_context: document.getElementById("toggleContextAI").checked,
+        use_comment_ai: document.getElementById("toggleCommentAI").checked,
+        sentiment: {
+          enabled: document.getElementById("toggleSentimentEnable").checked,
+          mode: document.getElementById("sentimentMode").value
+        }
+      }
+    };
+
+    console.log("Dry-run payload:", payload);
+
+    const res = await fetch("/dry-run", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+    if (!json.ok) {
+      showToast(json.message || "Dry-run failed", "danger");
+      return;
+    }
+
+    showToast(`Dry-run selesai (${json.total} video)`, "success");
+    await refreshProgress();
+
+  } catch (e) {
+    showToast("Dry-run error", "danger");
+  }
+});
+
+function renderStatus(v) {
+  if (!v.status) return "";
+
+  let html = `<div><strong>${v.status}</strong></div>`;
+
+  if (v.decision) {
+    const d = v.decision;
+
+    const context = d.use_context ? "ON" : "OFF";
+    const ai = d.use_comment_ai ? "ON" : "OFF";
+
+    const contextBadge = d.use_context ? "bg-success" : "bg-secondary";
+    const aiBadge = d.use_comment_ai ? "bg-primary" : "bg-secondary";
+
+    html += `
+    <span class="badge ${contextBadge} me-1">context:${context}</span>
+    <span class="badge ${aiBadge} me-1">ai:${ai}</span>
+    ${sentimentBadge(d.sentiment)}
+  `;
+
+    if (d.source) {
+      html += `
+      <div class="text-muted" style="font-size:11px;">
+        ${d.source}
+      </div>
+    `;
+    }
+  }
+
+  return html;
+}
+
+function sentimentBadge(sentiment) {
+  if (!sentiment) return "";
+
+  const map = {
+    positive: "bg-success",
+    neutral: "bg-secondary",
+    negative: "bg-danger",
+    sensitive: "bg-warning text-dark",
+    ambiguous: "bg-info"
+  };
+
+  const cls = map[sentiment] || "bg-secondary";
+  return `<span class="badge ${cls} me-1">sentiment:${sentiment}</span>`;
+}
+
+function runDryRun() {
+  const payload = {
+    flowConfig: {
+      use_context: document.getElementById("toggleContextAI").checked,
+      use_comment_ai: document.getElementById("toggleCommentAI").checked
+    }
+  };
+
+  fetch("/dry-run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+}
+
+function generateRunId() {
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `RUN#${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-` +
+    `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+}
+
+const toggleSentimentEnable = document.getElementById("toggleSentimentEnable");
+const sentimentMode = document.getElementById("sentimentMode");
+
+toggleSentimentEnable.addEventListener("change", () => {
+  sentimentMode.disabled = !toggleSentimentEnable.checked;
+});
+
+function renderSentimentPool(list) {
+  const box = document.getElementById("sentimentPoolPreview");
+  box.innerHTML = "Sentiment pool: " + list.join(", ");
+}
+
+const uploadSentimentBtn = document.getElementById("uploadSentimentBtn");
+
+if (uploadSentimentBtn) {
+  uploadSentimentBtn.addEventListener("click", async () => {
+    const fileInput = document.getElementById("sentimentFile");
+
+    if (!fileInput || !fileInput.files.length) {
+      alert("Pilih file sentiment dulu");
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append("file", fileInput.files[0]);
+
+    const res = await fetch("/upload/sentiment", {
+      method: "POST",
+      body: fd
+    });
+
+    const json = await res.json();
+
+    if (json.ok) {
+      console.log("Sentiment uploaded:", json.pool);
+      renderSentimentPool(json.pool);
+    } else {
+      alert("Upload sentiment gagal");
+    }
+  });
+}
+
+
+
+function sentimentBadge(s) {
+  const map = {
+    positive: "🟢",
+    negative: "🔴",
+    neutral: "⚪",
+    sensitive: "⚠️",
+    ambiguous: "🟡"
+  };
+  return map[s] || "—";
+}

@@ -97,19 +97,26 @@ function getWorkerState() {
   };
 }
 
-function incrementVideoProgress(videoId, comment) {
-  const video = state.videos.find(v => v.videoId === videoId);
-  if (!video) return;
+// function incrementVideoProgress(videoId, comment) {
+//   const video = state.videos.find(v => v.videoId === videoId);
+//   if (!video) return;
 
-  video.totalPosted = (video.totalPosted || 0) + 1;
-  video.status = "done";
-  video.comment = comment;
-  video.lastPostedAt = Date.now();
+//   video.totalPosted = (video.totalPosted || 0) + 1;
+//   video.status = "done";
+//   video.comment = comment;
+//   video.lastPostedAt = Date.now();
 
-  save();
+//   save();
+// }
+
+let sentimentPool = [];
+
+function setSentimentPool(list = []) {
+  sentimentPool = list;
 }
-
-module.exports.incrementVideoProgress = incrementVideoProgress;
+function getSentimentPool() {
+  return sentimentPool;
+}
 
 // =======================
 // EXPORT API (SATU KALI)
@@ -132,16 +139,30 @@ module.exports = {
     save(s);
   },
 
-  updateVideoStatus(videoId, status, comment = "") {
+  // updateVideoStatus(videoId, status, comment = "") {
+  //   const s = load();
+  //   const v = s.videos.find(x => x.videoId === videoId);
+  //   if (v) {
+  //     v.status = status;
+  //     v.comment = comment;
+  //   }
+  //   save(s);
+  // },
+
+  updateVideoStatus(videoId, status, comment = "", decision = null) {
     const s = load();
     const v = s.videos.find(x => x.videoId === videoId);
     if (v) {
       v.status = status;
       v.comment = comment;
+
+      // ✅ SIMPAN DECISION JIKA ADA
+      if (decision) {
+        v.decision = decision;
+      }
     }
     save(s);
   },
-
   // ===== LOG =====
   addPostingLog(log) {
     const s = load();
@@ -158,6 +179,8 @@ module.exports = {
   shouldStop,
   isWorkerRunning,
   finishWorker,
+  setSentimentPool,
+  getSentimentPool,
 
   // ===== TOKEN =====
   TOKEN_PATH: TOKENS_FILE,

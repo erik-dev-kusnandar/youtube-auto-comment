@@ -1,0 +1,24 @@
+{
+  "comment_engine": {
+    "use_context_ai": true,
+    "use_comment_ai": true,
+    "use_sentiment": false,
+    "use_video_analysis": false
+  },
+
+  "sentiment": {
+    "enabled": true,
+    "source": "file",
+    "file": "./data/sentiments.json"
+  },
+
+  "comment_source": {
+    "file": "./data/comments.txt",
+    "random": true
+  },
+
+  "limits": {
+    "max_sentences": 2,
+    "language": "id"
+  }
+}

@@ -11,7 +11,7 @@
 </head>
 
 <body class="bg-light">
-  <div class="container-fluid py-3">
+  <div class="container-fluid px-2 py-2">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h6><span class="badge badge-merah">YOUTUBE</span> Auto-Comment</h6>
       <div>
@@ -20,7 +20,7 @@
     </div>
 
     <div class="row g-4">
-      <div class="col-md-4">
+      <div class="col-md-4 pe-1">
         <div class="card mb-3">
           <div class="card-header">📁 Upload Video List (CSV) <small class="text-muted">header: video_url or
               videoId</small></div>
@@ -46,6 +46,80 @@
             <ul id="commentPreview" class="list-group list-group-flush"></ul>
           </div>
         </div>
+        <div class="card mb-3">
+          <div class="card-header">
+            ⚙️ Comment Engine Settings
+          </div>
+          <div class="card-body">
+
+            <!-- Toggle Context AI -->
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="toggleContextAI" checked>
+              <label class="form-check-label" for="toggleContextAI">
+                Pakai Context AI (Title + Description)
+              </label>
+            </div>
+
+            <!-- Sub Toggle Sentiment -->
+            <!-- <div class="form-check form-switch ms-4 mb-3">
+              <input class="form-check-input" type="checkbox" id="toggleSentiment">
+              <label class="form-check-label" for="toggleSentiment">
+                Pakai Sentiment
+              </label>
+            </div> -->
+
+            <hr />
+
+            <!-- Toggle Comment AI -->
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="toggleCommentAI">
+              <label class="form-check-label" for="toggleCommentAI">
+                Komen Pakai AI (Rewrite / Generate)
+              </label>
+            </div>
+
+          </div>
+        </div>
+        <div class="card mt-3">
+          <div class="card-header">
+            🎭 Sentiment Settings
+          </div>
+          <div class="card-body">
+
+            <!-- Sentiment Enable -->
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="toggleSentimentEnable">
+              <label class="form-check-label" for="toggleSentimentEnable">
+                Aktifkan Sentiment
+              </label>
+            </div>
+
+            <!-- Sentiment Mode -->
+            <div class="mb-3">
+              <label class="form-label">Mode Sentiment</label>
+              <select class="form-select" id="sentimentMode" disabled>
+                <option value="random">Random (Mood Generator)</option>
+                <option value="analyze">Analyze dari Video</option>
+              </select>
+            </div>
+
+            <!-- Upload Sentiment File -->
+            <div class="mb-2">
+              <label class="form-label">Upload Sentiment List (CSV)</label>
+              <input type="file" id="sentimentFile" class="form-control" accept=".csv">
+              <small class="text-muted">
+                Digunakan hanya untuk mode Random
+              </small>
+            </div>
+
+            <button class="btn btn-secondary btn-sm" id="uploadSentimentBtn">
+              Upload Sentiment
+            </button>
+            <div id="sentimentPoolPreview"></div>
+
+          </div>
+        </div>
+
 
         <!-- Modal popup detail comment -->
         <div class="modal fade" id="commentModal" tabindex="-1">
@@ -72,12 +146,16 @@
             <label class="form-label">MaxDelay per comment (ms):</label>
             <input id="maxDelayPerComment" type="number" class="form-control mb-3" value="60000" />
             <button id="startBtn" class="btn btn-success w-100 mb-2">🚀 Start Posting</button>
+            <button id="dryRunBtn" class="btn btn-outline-primary w-100 mb-2">
+              👁 Dry-Run Preview
+            </button>
+
             <button id="stopBtn" class="btn btn-secondary w-100">⏸ Stop</button>
           </div>
         </div>
       </div>
 
-      <div class="col-md-8">
+      <div class="col-md-8 ps-1">
         <div class="card mb-3">
           <div class="card-header">🖥 Live Log</div>
 
@@ -120,6 +198,7 @@
     <div id="toastContainer" style="position:fixed; right:20px; bottom:20px; z-index:9999;"></div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/main.js"></script>
+    <script src="/js/settings.js"></script>
   </div>
 </body>
 
