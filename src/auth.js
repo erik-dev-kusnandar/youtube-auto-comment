@@ -7,16 +7,17 @@ const logger = require('./logger');
 
 const app = express();
 // const PORT = process.env.PORT || 3000;
-const PORT = 3001;
+const PORT = 3002;
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const BASE_URL = process.env.BASE_URL;
+const BASE_URL_AUTH = process.env.BASE_URL_AUTH;
 
 const oauth2Client = new google.auth.OAuth2(
   CLIENT_ID,
   CLIENT_SECRET,
-  `${BASE_URL}/oauth2callback`
+  `${BASE_URL_AUTH}/oauth2callback`
 );
 
 const SCOPES = [
