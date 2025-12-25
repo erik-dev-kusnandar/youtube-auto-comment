@@ -14,8 +14,21 @@
   <div class="container-fluid px-2 py-2">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h6><span class="badge badge-merah">YOUTUBE</span> Auto-Comment</h6>
-      <div>
-        <button id="clearLog" class="btn btn-sm btn-outline-danger">Clear</button>
+
+      <!-- User Profile Dropdown -->
+      <div class="dropdown">
+        <button class="btn btn-outline-secondary btn-sm dropdown-toggle d-flex align-items-center gap-2" type="button"
+          data-bs-toggle="dropdown">
+          <span id="userNameDisplay">User</span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#profileModal">👤 Profile
+              Settings</a></li>
+          <li>
+            <hr class="dropdown-divider">
+          </li>
+          <li><a class="dropdown-item text-danger" href="#" id="logoutBtn">🚪 Logout</a></li>
+        </ul>
       </div>
     </div>
 
@@ -137,6 +150,41 @@
           </div>
         </div>
 
+        <!-- Profile Settings Modal -->
+        <div class="modal fade" id="profileModal" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Profile Settings</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+              </div>
+              <div class="modal-body">
+                <form id="profileForm">
+                  <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" name="username" id="profileUsername">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" name="email" id="profileEmail">
+                  </div>
+                  <hr>
+                  <h6>Change Password</h6>
+                  <div class="mb-3">
+                    <label class="form-label">New Password</label>
+                    <input type="password" class="form-control" name="new_password">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="password" class="form-control" name="confirm_password">
+                  </div>
+                  <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-body">
             <label class="form-label">Posting duration (ms):</label>
@@ -157,8 +205,10 @@
 
       <div class="col-md-8 ps-1">
         <div class="card mb-3">
-          <div class="card-header">🖥 Live Log</div>
-
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>🖥 Live Log</span>
+            <button id="clearLog" class="btn btn-sm btn-outline-danger">Clear</button>
+          </div>
           <div class="card-body">
             <pre id="logBox" style="height:280px; overflow:auto; background:#000; color:#0f0; padding:12px;"></pre>
           </div>

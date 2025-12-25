@@ -1,0 +1,116 @@
+{
+  "videos": [
+    {
+      "url": "https://www.youtube.com/shorts/puCeE_OB658",
+      "videoId": "puCeE_OB658",
+      "status": "done",
+      "comment": "Kayaknya Zulhas memang pilih diam soal ini, ya. Mungkin biar fokus kerja daripada banyak bicara.",
+      "decision": {
+        "use_context": true,
+        "sentiment_enabled": true,
+        "use_comment_ai": true,
+        "sentiment": "neutral",
+        "sentimentSource": "video_context",
+        "source": "file+context+ai",
+        "sentimentMode": "analyze",
+        "moderationStatus": "published"
+      }
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=Ss6ud71pmvQ",
+      "videoId": "Ss6ud71pmvQ",
+      "status": "done",
+      "comment": "Pembahasan Purbaya tentang pentingnya pendirian dalam kebijakan benar-benar membuka wawasan soal tantangan ekonomi ke depan. Jadi makin paham kenapa konsistensi itu kunci.",
+      "decision": {
+        "use_context": true,
+        "sentiment_enabled": true,
+        "use_comment_ai": true,
+        "sentiment": "neutral",
+        "sentimentSource": "video_context",
+        "source": "file+context+ai",
+        "sentimentMode": "analyze",
+        "moderationStatus": "heldForReview"
+      }
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=WHK5dX0VlzE",
+      "videoId": "WHK5dX0VlzE",
+      "status": "done",
+      "comment": "Mahfud MD memang nggak main-main soal reformasi Polri, semoga benar-benar ada perubahan nyata ke depannya. Pembahasannya cukup membuka mata tentang banyak hal yang perlu diperbaiki.",
+      "decision": {
+        "use_context": true,
+        "sentiment_enabled": true,
+        "use_comment_ai": true,
+        "sentiment": "neutral",
+        "sentimentSource": "video_context",
+        "source": "file+context+ai",
+        "sentimentMode": "analyze",
+        "moderationStatus": "published"
+      }
+    }
+  ],
+  "comments": [
+    {
+      "text": "Keren banget videonya,\niya bagus pokok nya"
+    },
+    {
+      "text": "Bagian ini menarik banget\n , perlu dibahas lanjut nih"
+    },
+    {
+      "text": "Top konten sih ini 👍 "
+    }
+  ],
+  "postingLogs": [
+    {
+      "runId": "RUN#20251225-085946",
+      "videoId": "puCeE_OB658",
+      "comment": "Kayaknya Zulhas memang pilih diam soal ini, ya. Mungkin biar fokus kerja daripada banyak bicara.",
+      "status": "success",
+      "decision": {
+        "use_context": true,
+        "sentiment_enabled": true,
+        "use_comment_ai": true,
+        "sentiment": "neutral",
+        "sentimentSource": "video_context",
+        "source": "file+context+ai",
+        "sentimentMode": "analyze",
+        "moderationStatus": "published"
+      },
+      "timestamp": "2025-12-25T01:59:48.652Z"
+    },
+    {
+      "runId": "RUN#20251225-085946",
+      "videoId": "Ss6ud71pmvQ",
+      "comment": "Pembahasan Purbaya tentang pentingnya pendirian dalam kebijakan benar-benar membuka wawasan soal tantangan ekonomi ke depan. Jadi makin paham kenapa konsistensi itu kunci.",
+      "status": "success",
+      "decision": {
+        "use_context": true,
+        "sentiment_enabled": true,
+        "use_comment_ai": true,
+        "sentiment": "neutral",
+        "sentimentSource": "video_context",
+        "source": "file+context+ai",
+        "sentimentMode": "analyze",
+        "moderationStatus": "heldForReview"
+      },
+      "timestamp": "2025-12-25T02:00:23.119Z"
+    },
+    {
+      "runId": "RUN#20251225-085946",
+      "videoId": "WHK5dX0VlzE",
+      "comment": "Mahfud MD memang nggak main-main soal reformasi Polri, semoga benar-benar ada perubahan nyata ke depannya. Pembahasannya cukup membuka mata tentang banyak hal yang perlu diperbaiki.",
+      "status": "success",
+      "decision": {
+        "use_context": true,
+        "sentiment_enabled": true,
+        "use_comment_ai": true,
+        "sentiment": "neutral",
+        "sentimentSource": "video_context",
+        "source": "file+context+ai",
+        "sentimentMode": "analyze",
+        "moderationStatus": "published"
+      },
+      "timestamp": "2025-12-25T02:01:15.716Z"
+    }
+  ]
+}

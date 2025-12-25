@@ -3,18 +3,35 @@ const fs = require("fs");
 const path = require("path");
 
 const DATA_DIR = path.join(__dirname, "../data");
-const STORE_FILE = path.join(DATA_DIR, "store.json");
 const TOKENS_FILE = path.join(DATA_DIR, "tokens.json");
 
 // =======================
 // INIT FILES
 // =======================
-function ensure() {
+function getStoreFilePath(username) {
+  if (!username) throw new Error("Username required for data store");
+  // Sanitize username to be safe for filename
+  const safeUsername = username.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  // Create folder: data/<username>/
+  return path.join(DATA_DIR, safeUsername, `store_${safeUsername}.json`);
+}
+
+function ensure(username) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
-  if (!fs.existsSync(STORE_FILE)) {
+  const safeUsername = username.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+  const userDir = path.join(DATA_DIR, safeUsername);
+
+  // Ensure user directory exists
+  if (!fs.existsSync(userDir)) {
+    fs.mkdirSync(userDir, { recursive: true });
+  }
+
+  const storeFile = getStoreFilePath(username);
+
+  if (!fs.existsSync(storeFile)) {
     fs.writeFileSync(
-      STORE_FILE,
+      storeFile,
       JSON.stringify(
         { videos: [], comments: [], postingLogs: [] },
         null,
@@ -28,71 +45,86 @@ function ensure() {
   }
 }
 
-function load() {
-  ensure();
-  return JSON.parse(fs.readFileSync(STORE_FILE, "utf-8"));
+function load(username) {
+  ensure(username);
+  return JSON.parse(fs.readFileSync(getStoreFilePath(username), "utf-8"));
 }
 
-function save(data) {
-  fs.writeFileSync(STORE_FILE, JSON.stringify(data, null, 2));
+function save(username, data) {
+  fs.writeFileSync(getStoreFilePath(username), JSON.stringify(data, null, 2));
 }
 
 // =======================
-// WORKER STATE (PERSISTENT)
+// WORKER STATE (PERSISTENT PER USER)
 // =======================
-let workerState = {
-  running: false,
-  stopRequested: false,
-  startTime: null,
-  endTime: null,
-  durationMs: 0,
-};
+const workerStates = new Map();
 
-function startWorker(durationMs) {
-  workerState.running = true;
-  workerState.stopRequested = false;
-  workerState.startTime = Date.now();
-  workerState.endTime = workerState.startTime + durationMs;
-  workerState.durationMs = durationMs;
+function getWorkerStateObj(username) {
+  if (!workerStates.has(username)) {
+    workerStates.set(username, {
+      running: false,
+      stopRequested: false,
+      startTime: null,
+      endTime: null,
+      durationMs: 0,
+    });
+  }
+  return workerStates.get(username);
 }
 
-function stopWorker() {
-  workerState.running = false;
+function startWorker(username, durationMs) {
+  const state = getWorkerStateObj(username);
+  state.running = true;
+  state.stopRequested = false;
+  state.startTime = Date.now();
+  state.endTime = state.startTime + durationMs;
+  state.durationMs = durationMs;
 }
 
-function finishWorker() {
-  workerState.running = false;
-  workerState.stopRequested = false;
-  workerState.startTime = null;
-  workerState.endTime = null;
-  workerState.durationMs = 0;
+function stopWorker(username) {
+  const state = getWorkerStateObj(username);
+  state.running = false;
 }
 
-function isWorkerRunning() {
-  return workerState.running === true;
+function finishWorker(username) {
+  const state = getWorkerStateObj(username);
+  state.running = false;
+  state.stopRequested = false;
+  state.startTime = null;
+  state.endTime = null;
+  state.durationMs = 0;
 }
 
-function requestStop() {
-  workerState.stopRequested = true;
+function isWorkerRunning(username) {
+  const state = getWorkerStateObj(username);
+  return state.running === true;
 }
 
-function shouldStop() {
-  return workerState.stopRequested;
+function requestStop(username) {
+  const state = getWorkerStateObj(username);
+  state.stopRequested = true;
 }
 
-function getWorkerState() {
-  if (!workerState.running) {
+function shouldStop(username) {
+  const state = getWorkerStateObj(username);
+  return state.stopRequested;
+}
+
+function getWorkerState(username) {
+  const state = getWorkerStateObj(username);
+
+  if (!state.running) {
     return { running: false };
   }
 
   const now = Date.now();
-  const elapsed = now - workerState.startTime;
-  const remainingMs = Math.max(0, workerState.durationMs - elapsed);
+  const elapsed = now - state.startTime;
+  const remainingMs = Math.max(0, state.durationMs - elapsed);
 
   return {
     running: remainingMs > 0,
-    startTime: workerState.startTime,
-    durationMs: workerState.durationMs,
+    startTime: state.startTime,
+    durationMs: state.durationMs,
     remainingMs,
   };
 }
@@ -109,34 +141,38 @@ function getWorkerState() {
 //   save();
 // }
 
-let sentimentPool = [];
+// Sentiment pool is currently global, can be made per user if needed.
+// For simplicity, let's keep it global or just in memory per request scope?
+// Actually sentiment pool is used by worker. Let's make it per user too.
+const sentimentPools = new Map();
 
-function setSentimentPool(list = []) {
-  sentimentPool = list;
+function setSentimentPool(username, list = []) {
+  sentimentPools.set(username, list);
 }
-function getSentimentPool() {
-  return sentimentPool;
+
+function getSentimentPool(username) {
+  return sentimentPools.get(username) || [];
 }
 
 // =======================
-// EXPORT API (SATU KALI)
+// EXPORT API
 // =======================
 module.exports = {
   // ===== DATA =====
-  getAll() {
-    return load();
+  getAll(username) {
+    return load(username);
   },
 
-  saveVideos(videos) {
-    const s = load();
+  saveVideos(username, videos) {
+    const s = load(username);
     s.videos = videos;
-    save(s);
+    save(username, s);
   },
 
-  saveComments(comments) {
-    const s = load();
+  saveComments(username, comments) {
+    const s = load(username);
     s.comments = comments;
-    save(s);
+    save(username, s);
   },
 
   // updateVideoStatus(videoId, status, comment = "") {
@@ -149,8 +185,8 @@ module.exports = {
   //   save(s);
   // },
 
-  updateVideoStatus(videoId, status, comment = "", decision = null) {
-    const s = load();
+  updateVideoStatus(username, videoId, status, comment = "", decision = null) {
+    const s = load(username);
     const v = s.videos.find(x => x.videoId === videoId);
     if (v) {
       v.status = status;
@@ -161,14 +197,14 @@ module.exports = {
         v.decision = decision;
       }
     }
-    save(s);
+    save(username, s);
   },
   // ===== LOG =====
-  addPostingLog(log) {
-    const s = load();
+  addPostingLog(username, log) {
+    const s = load(username);
     s.postingLogs = s.postingLogs || [];
     s.postingLogs.push(log);
-    save(s);
+    save(username, s);
   },
 
   // ===== WORKER STATE =====
@@ -182,6 +218,20 @@ module.exports = {
   setSentimentPool,
   getSentimentPool,
 
+  // ===== SENSITIVE KEYWORDS (PER USER) =====
+  setSensitiveKeywords(username, list = []) {
+    // We can store this in memory or file. Ideally file if persisted. 
+    // For now, let's keep in memory like sentimentPools.
+    // Or reuse sentimentPools map logic? No, separate map.
+    if (!global.sensitiveKeywordsMap) global.sensitiveKeywordsMap = new Map();
+    global.sensitiveKeywordsMap.set(username, list);
+  },
+
+  getSensitiveKeywords(username) {
+    if (!global.sensitiveKeywordsMap) return [];
+    return global.sensitiveKeywordsMap.get(username) || [];
+  },
+
   // ===== TOKEN =====
-  TOKEN_PATH: TOKENS_FILE,
+  TOKEN_PATH: TOKENS_FILE, // Shared
 };
