@@ -2,7 +2,6 @@
 const store = require("../dataStore");
 const logger = require("../logger");
 const { postComment, fetchVideoMetadata } = require("./youtubeService");
-const { buildCommentFromMetadata } = require("./metadataHelper");
 const { rewriteComment } = require("../ai/aiCommentService");
 const { applySentimentStyle } = require("../../services/sentimentStyle");
 const { applyGuardrail } = require("../../services/guardrailService");
@@ -22,8 +21,13 @@ const isDuplicate = (videoId, comment) => {
 
 let videoIndex = 0;
 
-async function startYoutubeWorker(opts = {}, pushLog = () => { }) {
-  const { videos = [], comments = [] } = store.getAll();
+async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
+  if (!username) {
+    pushLog({ type: "error", message: "Worker Error: No username provided" });
+    return;
+  }
+
+  const { videos = [], comments = [] } = store.getAll(username);
 
   if (!videos.length || !comments.length) {
     pushLog({ type: "error", message: "Videos or comments empty" });
@@ -46,13 +50,13 @@ async function startYoutubeWorker(opts = {}, pushLog = () => { }) {
 
   const runId = opts.runId || `RUN#${Date.now()}`;
 
-  if (store.isWorkerRunning()) {
+  if (store.isWorkerRunning(username)) {
     pushLog({ type: "warn", message: "Worker already running, skip start" });
     return;
   }
 
   const endTime = Date.now() + postingDuration;
-  store.startWorker(postingDuration);
+  store.startWorker(username, postingDuration);
 
   pushLog({ type: "info", message: `Worker started for ${postingDuration} ms` });
   pushLog({
@@ -64,14 +68,14 @@ async function startYoutubeWorker(opts = {}, pushLog = () => { }) {
       `sentimentMode=${flowConfig.sentiment.mode} | ` +
       `commentAI=${flowConfig.use_comment_ai ? "ON" : "OFF"}`
   });
-  logger.info("YouTube worker started");
+  logger.info(`YouTube worker started for user: ${username}`);
 
   while (Date.now() < endTime) {
 
     // ⛔ STOP REQUEST CHECK
-    if (store.shouldStop()) {
+    if (store.shouldStop(username)) {
       pushLog({ type: "warn", message: "Stop requested, worker halted" });
-      store.finishWorker();
+      store.finishWorker(username);
       return;
     }
 
@@ -81,11 +85,11 @@ async function startYoutubeWorker(opts = {}, pushLog = () => { }) {
     const commentTpl = comments[Math.floor(Math.random() * comments.length)];
 
     try {
-      store.updateVideoStatus(video.videoId, "processing");
+      store.updateVideoStatus(username, video.videoId, "processing");
 
 
       // ===== DECISION OBJECT =====
-      console.log("DEBUG flowConfig:", JSON.stringify(flowConfig, null, 2));
+      // console.log("DEBUG flowConfig:", JSON.stringify(flowConfig, null, 2));
 
       const decision = {
         use_context: flowConfig.use_context || false,
@@ -96,149 +100,121 @@ async function startYoutubeWorker(opts = {}, pushLog = () => { }) {
         source: "file" // default
       };
 
-      console.log("DEBUG decision:", JSON.stringify(decision, null, 2));
+      // console.log("DEBUG decision:", JSON.stringify(decision, null, 2));
 
-      let finalComment = null;
-      let meta = null;
 
-      // ambil template sekali
-      const tpl = commentTpl.text;
-
-      // ===== TOGGLE A: CONTEXT =====
-      if (decision.use_context) {
-        meta = await fetchVideoMetadata(video.videoId);
-        finalComment = buildCommentFromMetadata(meta, tpl);
-        decision.source = "file+context";
-      } else {
-        finalComment = tpl;
-        decision.source = "file";
+      // 1. CONTEXT ANALYSIS
+      let contextSummary = "";
+      let metadata = null; // ✅ Save metadata
+      if (flowConfig.use_context) {
+        metadata = await fetchVideoMetadata(video.videoId);
+        contextSummary = metadata ? `${metadata.title} - ${metadata.description}` : "";
+        decision.use_context = true;
       }
 
-      // ===== SENTIMENT =====
+      // 2. SENTIMENT ANALYSIS
+      let targetSentiment = "neutral";
       if (flowConfig.sentiment?.enabled) {
+        decision.sentiment_enabled = true;
+        const mode = flowConfig.sentiment.mode;
+        decision.sentimentMode = mode;
 
-        // MODE: RANDOM (ambil dari file user)
-        if (flowConfig.sentiment.mode === "file" || flowConfig.sentiment.mode === "random") {
-          decision.sentiment = pickRandomSentiment();
-          decision.sentimentSource = "file";
-        }
-
-        // MODE: ANALYZE (dari video)
-        if (flowConfig.sentiment.mode === "analyze" && decision.use_context && meta) {
-          try {
-            decision.sentiment = await classifySentiment({
-              title: meta.title,
-              description: meta.description?.slice(0, 500) || ""
-            });
-            decision.sentimentSource = "video";
-          } catch (e) {
-            decision.sentiment = "neutral";
+        if (mode === "random") {
+          // MODE RANDOM (from file or general pool)
+          const pool = store.getSentimentPool(username);
+          if (pool && pool.length > 0) {
+            targetSentiment = pool[Math.floor(Math.random() * pool.length)];
+            decision.sentimentSource = "file";
+          } else {
+            targetSentiment = pickRandomSentiment();
+            decision.sentimentSource = "random";
+          }
+        } else if (mode === "analyze") {
+          // MODE ANALYZE (from video context)
+          if (contextSummary) {
+            targetSentiment = await classifySentiment(contextSummary);
+            decision.sentimentSource = "video_context";
+          } else {
+            targetSentiment = "neutral"; // fallback
             decision.sentimentSource = "fallback";
           }
         }
-      } else {
-        decision.sentiment = "none";
-        decision.sentimentSource = "disabled";
+
+        // Remove skip logic - always post
+        // if (targetSentiment === "sensitive") ...
+
+        decision.sentiment = targetSentiment;
       }
 
-      // ⛔ SKIP IF SENSITIVE (DISABLED - User request 2025-12-25)
-      // if (decision.sentiment === "sensitive") {
+      // 3. COMMENT GENERATION
+      let finalComment = commentTpl.text;
+
+      if (flowConfig.use_comment_ai) {
+        decision.use_comment_ai = true;
+
+        if (flowConfig.sentiment?.enabled) {
+          finalComment = await applySentimentStyle(finalComment, targetSentiment);
+          decision.source = "file+sentiment";
+        }
+
+        if (metadata && contextSummary) {
+          finalComment = await rewriteComment({
+            title: metadata.title,
+            description: metadata.description?.slice(0, 500) || "",
+            draft: finalComment
+          });
+          decision.source = "file+context+ai";
+        }
+      } else {
+        // No AI rewrite, just pure file or minor adjustments
+        decision.source = "file";
+      }
+
+      // 4. GUARDRAIL
+      const guard = await applyGuardrail(finalComment);
+      // if (!guard.safe) {
+      //   store.updateVideoStatus(username, video.videoId, "skipped_unsafe", guard.reason);
       //   pushLog({
-      //     type: "skip",
+      //     type: "video",
       //     runId,
       //     item: video,
-      //     message: "Skipped due to sensitive sentiment"
+      //     message: `⚠️ Skipped Unsafe: ${guard.reason}`
       //   });
-      //   store.updateVideoStatus(video.videoId, "skipped", "sensitive sentiment");
       //   continue;
       // }
 
-      // ===== TOGGLE B: AI COMMENT (FINAL AUTHORITY) =====
-      if (decision.use_comment_ai) {
-        try {
-          const ai = await rewriteComment({
-            title: meta?.title || "",
-            description: meta?.description?.slice(0, 300) || "",
-            draft: finalComment,
-            sentiment: decision.sentiment
-          });
 
-          if (ai && ai.length < 300) {
-            finalComment = ai;
-            decision.source += "+ai";
-          }
-        } catch (e) {
-          pushLog({
-            type: "warn",
-            runId,
-            item: video,
-            message: "AI failed, fallback to previous draft"
-          });
-        }
-      }
-
-      // ===== STYLE BY SENTIMENT =====
-      if (decision.sentiment && decision.sentiment !== "none") {
-        finalComment = applySentimentStyle({
-          sentiment: decision.sentiment,
-          text: finalComment
-        });
-
-        decision.source += "+sentiment-style";
-      }
-
-      // ===== GUARDRAIL =====
-      const guard = applyGuardrail({
-        sentiment: decision.sentiment,
-        text: finalComment
-      });
-
-      if (guard.blocked) {
-        finalComment = guard.text;
-        decision.source += "+guardrail";
-
-        pushLog({
-          type: "warn",
-          runId,
-          item: video,
-          message: `Guardrail applied (sentiment=${decision.sentiment})`
-        });
-      }
-
-      // ===== CHECK DUPLICATE =====
+      // 5. POSTING
       if (isDuplicate(video.videoId, finalComment)) {
+        store.updateVideoStatus(username, video.videoId, "skipped_duplicate");
         pushLog({
-          type: "warn",
+          type: "video",
           runId,
           item: video,
-          message: "Duplicate comment skipped",
+          message: "⚠️ Skipped Duplicate"
         });
+        await wait(1000);
         continue;
       }
 
-      // ===== POST COMMENT =====
-      const postResult = await postComment(video.videoId, finalComment);
-      const moderationStatus = postResult.moderationStatus || "published";
+      const result = await postComment(video.videoId, finalComment);
 
-      store.updateVideoStatus(video.videoId, "done", finalComment, {
-        sentiment: decision.sentiment,
-        sentimentSource: decision.sentimentSource,
-        source: decision.source,
-        use_context: decision.use_context,
-        use_comment_ai: decision.use_comment_ai,
-        sentiment_enabled: decision.sentiment_enabled,
-        moderationStatus
-      });
+      // LOGIC VISIBILITY CHECK DARI RESULT API
+      decision.moderationStatus = result.moderationStatus || "published";
 
-      store.addPostingLog({
+      store.updateVideoStatus(username, video.videoId, "done", finalComment, decision);
+
+      // STORE LOG (Persist to file)
+      store.addPostingLog(username, {
+        runId,
         videoId: video.videoId,
         comment: finalComment,
-        time: new Date().toISOString(),
-        status: "done",
-        moderationStatus,
-        decision
+        status: "success",
+        decision,
+        timestamp: new Date().toISOString()
       });
 
+      // PUSH LOG (SSE to Frontend)
       pushLog({
         type: "video",
         runId,
@@ -249,34 +225,37 @@ async function startYoutubeWorker(opts = {}, pushLog = () => { }) {
             sentiment_enabled: decision.sentiment_enabled,
             use_comment_ai: decision.use_comment_ai,
             sentimentSource: decision.sentimentSource,
-            sentimentMode: flowConfig.sentiment?.mode || "none",
+            sentimentMode: decision.sentimentMode,
             source: decision.source
           },
-          sentimentResult: decision.sentiment || "none",
-          moderationStatus,
+          sentimentResult: decision.sentiment,
+          moderationStatus: decision.moderationStatus,
           preview: finalComment
         }
       });
 
-      logger.info(`Comment posted on video ${video.videoId}`);
-
-    } catch (err) {
-      store.updateVideoStatus(video.videoId, "error");
-      pushLog({ type: "error", runId, item: video, message: err.message });
-      logger.error(err.message);
+    } catch (e) {
+      logger.error(`Error processing video ${video.videoId}: ${e.message}`);
+      store.updateVideoStatus(username, video.videoId, "error", e.message);
+      pushLog({
+        type: "video",
+        runId,
+        item: video,
+        message: `❌ Error: ${e.message}`
+      });
     }
 
     const delay = rand(minDelay, maxDelay);
-    pushLog({ type: "delay", runId, message: `Waiting ${Math.floor(delay / 1000)}s` });
+    pushLog({
+      type: "info",
+      message: `Waiting ${Math.round(delay / 1000)}s before next comment...`
+    });
     await wait(delay);
-
   }
 
-  store.stopWorker();
-  store.finishWorker();
-
-  pushLog({ type: "finished", runId, message: "Posting duration finished" });
-  logger.info("YouTube worker finished");
+  store.finishWorker(username);
+  pushLog({ type: "info", message: "Worker finished" });
+  logger.info(`YouTube worker finished for user: ${username}`);
 }
 
 module.exports = { startYoutubeWorker };

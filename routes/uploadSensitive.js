@@ -16,7 +16,13 @@ router.post("/sensitive", upload.single("file"), (req, res) => {
       results.push(row.keyword.toLowerCase());
     })
     .on("end", () => {
-      store.setSensitiveKeywords(results);
+      const username = req.session.username;
+      if (username) {
+        store.setSensitiveKeywords(username, results);
+      } else {
+        console.error("No username in session for sensitive upload");
+      }
+
       fs.unlinkSync(req.file.path);
 
       res.json({

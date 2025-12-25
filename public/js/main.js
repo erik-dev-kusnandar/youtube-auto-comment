@@ -501,3 +501,65 @@ function sentimentBadge(s) {
   };
   return map[s] || "—";
 }
+// ===== USER PROFILE MANAGEMENT =====
+async function fetchUserProfile() {
+  try {
+    const res = await fetch("/me");
+    if (res.ok) {
+      const user = await res.json();
+      document.getElementById("userNameDisplay").textContent = user.username;
+
+      // Pre-fill modal
+      document.getElementById("profileUsername").value = user.username;
+      document.getElementById("profileEmail").value = user.email;
+    } else {
+      // If unauthorized, redirect to login
+      window.location.href = "/login";
+    }
+  } catch (err) {
+    console.error("Failed to fetch user profile", err);
+  }
+}
+
+document.getElementById("logoutBtn").addEventListener("click", async (e) => {
+  e.preventDefault();
+  try {
+    await fetch("/logout", { method: "POST" });
+    window.location.href = "/login";
+  } catch (err) {
+    console.error("Logout failed", err);
+  }
+});
+
+document.getElementById("profileForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const data = Object.fromEntries(formData.entries());
+
+  try {
+    const res = await fetch("/profile", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    const result = await res.json();
+    if (res.ok) {
+      showToast("Profile updated successfully ✅", "success");
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById("profileModal"));
+      modal.hide();
+      // Refresh user info
+      fetchUserProfile();
+    } else {
+      showToast(result.error || "Failed to update profile", "danger");
+    }
+  } catch (err) {
+    showToast("Error updating profile", "danger");
+  }
+});
+
+// Load user profile on startup
+document.addEventListener("DOMContentLoaded", () => {
+  fetchUserProfile();
+});

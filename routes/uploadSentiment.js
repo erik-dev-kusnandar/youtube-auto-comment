@@ -19,9 +19,12 @@ router.post("/sentiment", upload.single("file"), (req, res) => {
       .map(x => x.trim())
       .filter(Boolean);
 
-    store.setSentimentPool(list);
+    const username = req.session.username;
+    if (!username) return res.status(401).json({ ok: false, error: "Unauthorized" });
 
-    console.log("Sentiment pool loaded:", list);
+    store.setSentimentPool(username, list);
+
+    console.log(`Sentiment pool loaded for ${username}:`, list);
 
     res.json({
       ok: true,
@@ -35,7 +38,8 @@ router.post("/sentiment", upload.single("file"), (req, res) => {
 });
 
 router.get("/sentiment/pool", (req, res) => {
-  const pool = store.getSentimentPool?.() || [];
+  const username = req.session?.username;
+  const pool = (username && store.getSentimentPool?.(username)) || [];
   res.json({ ok: true, pool });
 });
 

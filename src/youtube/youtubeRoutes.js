@@ -31,7 +31,9 @@ module.exports = (pushLog) => {
 
   // progress endpoint
   router.get("/progress", (req, res) => {
-    res.json(store.getAll());
+    const username = req.session.username;
+    if (!username) return res.json({ videos: [], comments: [], postingLogs: [] });
+    res.json(store.getAll(username));
   });
 
   router.post("/settings/comment-flow", (req, res) => {
@@ -48,6 +50,8 @@ module.exports = (pushLog) => {
 
   // start worker with optional query params
   router.post("/start", (req, res) => {
+    const username = req.session.username;
+    if (!username) return res.status(401).json({ error: "Unauthorized" });
 
     const opts = {
       postingDuration: Number(req.body.postingDuration || req.query.postingDuration),
@@ -60,7 +64,7 @@ module.exports = (pushLog) => {
     console.log("Start posting with config:", opts);
 
     // run worker async (do not block)
-    startYoutubeWorker(opts, pushLog).catch(e => {
+    startYoutubeWorker(username, opts, pushLog).catch(e => {
       console.error("Worker error:", e.message);
     });
 
@@ -69,19 +73,25 @@ module.exports = (pushLog) => {
   });
 
   router.get("/status", (req, res) => {
-    res.json(store.getWorkerState());
+    const username = req.session.username;
+    if (!username) return res.json({ running: false });
+    res.json(store.getWorkerState(username));
   });
 
   router.post("/stop", (req, res) => {
-    store.stopWorker();
-    store.requestStop();
-
+    const username = req.session.username;
+    if (username) {
+      store.stopWorker(username);
+      store.requestStop(username);
+    }
     res.json({ ok: true });
   });
 
   router.post("/dry-run", async (req, res) => {
     try {
-      const { videos = [], comments = [] } = store.getAll();
+      const username = req.session.username;
+
+      const { videos = [], comments = [] } = username ? store.getAll(username) : { videos: [], comments: [] };
       const runId = req.body.runId || `RUN#${Date.now()}`;
 
       // ✅ FIX: Read from req.body.flowConfig (sent by frontend)

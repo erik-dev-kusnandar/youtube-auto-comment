@@ -11,9 +11,49 @@ const uploadSentiment = require("../routes/uploadSentiment");
 const sentimentRoutes = require("../routes/uploadSentiment");
 
 const app = express();
+
+// Auth Dependencies
+const session = require('express-session');
+const SQLiteStore = require('connect-sqlite3')(session);
+const sequelize = require('./db/database');
+const User = require('./models/User');
+const authRoutes = require('./auth/authRoutes');
+const { isAuthenticated } = require('./auth/authMiddleware');
+
+// Init Database & Admin
+sequelize.sync().then(async () => {
+  logger.info("Database synced");
+  const admin = await User.findOne({ where: { username: 'admin' } });
+  if (!admin) {
+    await User.create({ username: 'admin', email: 'admin@local.host', password: 'admin123', role: 'admin' });
+    logger.info("Default Admin created: admin / admin123");
+  }
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session Setup
+app.use(session({
+  store: new SQLiteStore({ dir: 'data', db: 'sessions.sqlite' }),
+  secret: 'super_secret_key_youtube_auto_comment', // In prod use env
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 1 week
+}));
+
+// 1. Auth Routes (Public)
+app.use('/', authRoutes);
+
+// 2. Static Assets (Public) - CSS, JS, Images
+app.use('/css', express.static(path.join(__dirname, '../public/css')));
+app.use('/js', express.static(path.join(__dirname, '../public/js')));
+app.use('/img', express.static(path.join(__dirname, '../public/img')));
+
+// 3. Protect ALL other routes
+app.use(isAuthenticated);
+
 
 // app.js - GANTI FUNGSI safePayload
 function safePayload(payload, maxSize = 800) {
