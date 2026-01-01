@@ -162,10 +162,31 @@ module.exports = (pushLog) => {
               (decision.source || "file") + "+sentiment-style";
           }
 
-          // MODE: RANDOM (ambil dari file user)
-          if (flowConfig.sentiment.mode === "file") {
-            decision.sentiment = pickRandomSentiment();
-            decision.sentimentSource = "file";
+          // MODE: RANDOM (ambil dari file user atau random pool)
+          if (flowConfig.sentiment.mode === "file" || flowConfig.sentiment.mode === "random") {
+            const pool = store.getSentimentPool(username);
+
+            if (flowConfig.sentiment.mode === "random" && (!pool || pool.length === 0)) {
+              decision.sentiment = pickRandomSentiment();
+              decision.sentimentSource = "random";
+            } else {
+              decision.sentiment = pickRandomSentiment(); // Fallback logic or specific file logic if needed
+              // Actually existing logic just calls pickRandomSentiment() for file mode which seems to be a placeholder 
+              // based on worker logic, worker uses:
+              // const pool = store.getSentimentPool(username); ...
+              // Let's mirror worker logic more closely if possible, or just fix the mode check for now.
+              // The original code was:
+              // if (flowConfig.sentiment.mode === "file") { ... }
+
+              // Let's use the Worker logic for better consistency:
+              if (pool && pool.length > 0) {
+                decision.sentiment = pool[Math.floor(Math.random() * pool.length)];
+                decision.sentimentSource = "file";
+              } else {
+                decision.sentiment = pickRandomSentiment();
+                decision.sentimentSource = "random";
+              }
+            }
           }
 
           // MODE: ANALYZE (dari video)
@@ -313,6 +334,7 @@ module.exports = (pushLog) => {
               source: decision.source
             },
             sentimentResult: decision.sentiment || "none",
+            moderationStatus: "preview", // ✅ ADDED THIS
             preview: finalComment
           }
         };
