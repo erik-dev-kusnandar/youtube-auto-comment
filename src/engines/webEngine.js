@@ -91,17 +91,41 @@ class WebEngine {
                 throw new Error("Could not find comment box. Screenshot saved. Check if logged in via 'Setup Login'.");
             }
 
+            // Wait for input to be ready after click
+            await new Promise(r => setTimeout(r, 2000));
+
             // 3. Type text (Human delay)
             logger.info("[WebEngine] Typing comment...");
-            const inputSelector = "#contenteditable-root";
-            await page.waitForSelector(inputSelector, { timeout: 5000, visible: true });
-            await page.focus(inputSelector);
+            const inputSelectors = [
+                "#contenteditable-root",
+                "div#contenteditable-root[contenteditable='true']",
+                "[aria-label='Add a comment...']",
+                "#contenteditable-textarea"
+            ];
+
+            let inputElement = null;
+            for (const sel of inputSelectors) {
+                try {
+                    inputElement = await page.waitForSelector(sel, { timeout: 3000, visible: true });
+                    if (inputElement) {
+                        logger.info(`[WebEngine] Found input element via: ${sel}`);
+                        break;
+                    }
+                } catch (e) { continue; }
+            }
+
+            if (!inputElement) {
+                const ss = path.join(logsDir, `fail_input_box_${videoId}.png`);
+                await page.screenshot({ path: ss });
+                throw new Error("Could not find typing area (#contenteditable-root).");
+            }
+
+            await inputElement.focus();
 
             // Clear
-            await page.evaluate((sel) => {
-                const el = document.querySelector(sel);
+            await page.evaluate((el) => {
                 if (el) el.textContent = "";
-            }, inputSelector);
+            }, inputElement);
 
             await page.keyboard.type(text, { delay: 100 });
             await new Promise(r => setTimeout(r, 1500));
