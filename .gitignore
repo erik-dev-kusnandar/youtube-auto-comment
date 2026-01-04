@@ -77,6 +77,15 @@ web_modules/
 # YouTube OAuth tokens (prevent overwriting server tokens)
 data/tokens.json
 
+# Databases and User Data
+data/*.sqlite
+data/**/*.json
+data/sessions.sqlite
+data/database.sqlite
+
+# Uploaded CSVs and other files
+uploads/
+
 # parcel-bundler cache (https://parceljs.org/)
 .cache
 .parcel-cache
