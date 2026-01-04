@@ -202,68 +202,77 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
           item: video,
           message: `❌ Engine Error: ${result.message}`
         });
-        await wait(1000);
-        continue;
+
+        // ⛔ Check stop even on error
+        if (store.shouldStop(username)) {
+          pushLog({ type: "warn", message: "Stop requested after engine error" });
+          store.finishWorker(username);
+          return;
+        }
+
+        // Removed the 1s wait + continue to let it hit the main delay below, 
+        // preventing "log storms" when something is broken (e.g. missing libs).
+      } else {
+        // ... (rest of logic for success)
+
+        // LOGIC VISIBILITY CHECK DARI RESULT API / ENGINE
+        decision.moderationStatus = result.moderationStatus || "published";
+        decision.engine_msg = result.message || "";
+
+        store.updateVideoStatus(username, video.videoId, "done", finalComment, decision);
+
+        // STORE LOG (Persist to file)
+        store.addPostingLog(username, {
+          runId,
+          videoId: video.videoId,
+          comment: finalComment,
+          status: "success",
+          decision,
+          timestamp: new Date().toISOString()
+        });
+
+        // PUSH LOG (SSE to Frontend)
+        pushLog({
+          type: "video",
+          runId,
+          item: video,
+          message: {
+            decision: {
+              use_context: decision.use_context,
+              sentiment_enabled: decision.sentiment_enabled,
+              use_comment_ai: decision.use_comment_ai,
+              sentimentSource: decision.sentimentSource,
+              sentimentMode: decision.sentimentMode,
+              source: decision.source
+            },
+            sentimentResult: decision.sentiment,
+            moderationStatus: decision.moderationStatus,
+            preview: finalComment
+          }
+        });
+
+      } catch (e) {
+        logger.error(`Error processing video ${video.videoId}: ${e.message}`);
+        store.updateVideoStatus(username, video.videoId, "error", e.message);
+        pushLog({
+          type: "video",
+          runId,
+          item: video,
+          message: `❌ Error: ${e.message}`
+        });
       }
 
-      // LOGIC VISIBILITY CHECK DARI RESULT API / ENGINE
-      decision.moderationStatus = result.moderationStatus || "published";
-      decision.engine_msg = result.message || "";
-
-      store.updateVideoStatus(username, video.videoId, "done", finalComment, decision);
-
-      // STORE LOG (Persist to file)
-      store.addPostingLog(username, {
-        runId,
-        videoId: video.videoId,
-        comment: finalComment,
-        status: "success",
-        decision,
-        timestamp: new Date().toISOString()
-      });
-
-      // PUSH LOG (SSE to Frontend)
+      const delay = rand(minDelay, maxDelay);
       pushLog({
-        type: "video",
-        runId,
-        item: video,
-        message: {
-          decision: {
-            use_context: decision.use_context,
-            sentiment_enabled: decision.sentiment_enabled,
-            use_comment_ai: decision.use_comment_ai,
-            sentimentSource: decision.sentimentSource,
-            sentimentMode: decision.sentimentMode,
-            source: decision.source
-          },
-          sentimentResult: decision.sentiment,
-          moderationStatus: decision.moderationStatus,
-          preview: finalComment
-        }
+        type: "info",
+        message: `Waiting ${Math.round(delay / 1000)}s before next comment...`
       });
-
-    } catch (e) {
-      logger.error(`Error processing video ${video.videoId}: ${e.message}`);
-      store.updateVideoStatus(username, video.videoId, "error", e.message);
-      pushLog({
-        type: "video",
-        runId,
-        item: video,
-        message: `❌ Error: ${e.message}`
-      });
+      await wait(delay);
     }
 
-    const delay = rand(minDelay, maxDelay);
-    pushLog({
-      type: "info",
-      message: `Waiting ${Math.round(delay / 1000)}s before next comment...`
-    });
-    await wait(delay);
+  store.finishWorker(username);
+    pushLog({ type: "info", message: "Worker finished" });
+    logger.info(`YouTube worker finished for user: ${username}`);
   }
 
-  store.finishWorker(username);
-  pushLog({ type: "info", message: "Worker finished" });
-  logger.info(`YouTube worker finished for user: ${username}`);
-}
-
-module.exports = { startYoutubeWorker };
+  module.exports = { startYoutubeWorker };
