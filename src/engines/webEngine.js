@@ -32,6 +32,18 @@ class WebEngine {
             const page = await browser.newPage();
             await page.setViewport({ width: 1280, height: 800 });
 
+            // 🍪 Load Cookies if exist
+            const cookiePath = path.join(process.cwd(), "data", "youtube_cookies.json");
+            if (fs.existsSync(cookiePath)) {
+                try {
+                    const cookies = JSON.parse(fs.readFileSync(cookiePath));
+                    await page.setCookie(...cookies);
+                    logger.info("[WebEngine] Cookies loaded successfully");
+                } catch (e) {
+                    logger.error(`[WebEngine] Failed to load cookies: ${e.message}`);
+                }
+            }
+
             // Mask automation
             await page.evaluateOnNewDocument(() => {
                 Object.defineProperty(navigator, "webdriver", { get: () => false });
@@ -225,8 +237,23 @@ class WebEngine {
             await page.goto("https://www.youtube.com", { waitUntil: "networkidle2" });
 
             return new Promise((resolve) => {
-                browser.on("disconnected", () => {
+                browser.on("disconnected", async () => {
                     logger.info("[WebEngine] Browser closed by user.");
+
+                    // 🍪 Save Cookies on close
+                    try {
+                        const pages = await browser.pages();
+                        if (pages.length > 0) {
+                            const cookies = await pages[0].cookies();
+                            const dataDir = path.join(process.cwd(), "data");
+                            if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+                            fs.writeFileSync(path.join(dataDir, "youtube_cookies.json"), JSON.stringify(cookies, null, 2));
+                            logger.info("[WebEngine] Cookies saved to data/youtube_cookies.json");
+                        }
+                    } catch (e) {
+                        logger.error(`[WebEngine] Failed to save cookies: ${e.message}`);
+                    }
+
                     resolve({ ok: true });
                 });
             });
