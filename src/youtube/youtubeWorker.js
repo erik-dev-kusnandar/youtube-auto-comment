@@ -250,29 +250,29 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
             preview: finalComment
           }
         });
-
-      } catch (e) {
-        logger.error(`Error processing video ${video.videoId}: ${e.message}`);
-        store.updateVideoStatus(username, video.videoId, "error", e.message);
-        pushLog({
-          type: "video",
-          runId,
-          item: video,
-          message: `❌ Error: ${e.message}`
-        });
       }
-
-      const delay = rand(minDelay, maxDelay);
+    } catch (e) {
+      logger.error(`Error processing video ${video.videoId}: ${e.message}`);
+      store.updateVideoStatus(username, video.videoId, "error", e.message);
       pushLog({
-        type: "info",
-        message: `Waiting ${Math.round(delay / 1000)}s before next comment...`
+        type: "video",
+        runId,
+        item: video,
+        message: `❌ Error: ${e.message}`
       });
-      await wait(delay);
     }
 
-  store.finishWorker(username);
-    pushLog({ type: "info", message: "Worker finished" });
-    logger.info(`YouTube worker finished for user: ${username}`);
+    const delay = rand(minDelay, maxDelay);
+    pushLog({
+      type: "info",
+      message: `Waiting ${Math.round(delay / 1000)}s before next comment...`
+    });
+    await wait(delay);
   }
 
-  module.exports = { startYoutubeWorker };
+  store.finishWorker(username);
+  pushLog({ type: "info", message: "Worker finished" });
+  logger.info(`YouTube worker finished for user: ${username}`);
+}
+
+module.exports = { startYoutubeWorker };
