@@ -21,8 +21,31 @@ let commentFlowConfig = {
 
 const flowConfig = commentFlowConfig;
 
+const appiumEngine = require("../engines/appiumEngine");
+const webEngine = require("../engines/webEngine");
+
 module.exports = (pushLog) => {
   const router = express.Router();
+
+  // Web Browser Setup Login
+  router.post("/web/setup-login", async (req, res) => {
+    try {
+      // Run in background but handle errors
+      webEngine.setupLogin().catch(e => {
+        console.error("Setup login browser error:", e.message);
+      });
+      res.json({ ok: true, message: "Browser opening..." });
+    } catch (e) {
+      res.status(500).json({ ok: false, message: e.message });
+    }
+  });
+
+  // Test Appium Connection
+  router.post("/appium/test-connection", async (req, res) => {
+    const { deviceId } = req.body;
+    const ok = await appiumEngine.testConnection(deviceId);
+    res.json({ ok });
+  });
 
   // mount upload router at /upload
   router.use("/upload", uploadRouter);
@@ -58,7 +81,9 @@ module.exports = (pushLog) => {
       minDelay: Number(req.body.minDelay || req.query.minDelay),
       maxDelay: Number(req.body.maxDelay || req.query.maxDelay),
       flowConfig: req.body.flowConfig || {},
-      runId: req.body.runId || `RUN#${Date.now()}`
+      runId: req.body.runId || `RUN#${Date.now()}`,
+      method: req.body.method,
+      deviceId: req.body.deviceId
     };
 
     console.log("Start posting with config:", opts);

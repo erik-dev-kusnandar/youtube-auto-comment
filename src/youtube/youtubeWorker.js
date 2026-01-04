@@ -1,7 +1,8 @@
 // src/youtube/youtubeWorker.js
 const store = require("../dataStore");
 const logger = require("../logger");
-const { postComment, fetchVideoMetadata } = require("./youtubeService");
+const { getEngine } = require("../engines");
+const { fetchVideoMetadata } = require("./youtubeService");
 const { rewriteComment } = require("../ai/aiCommentService");
 const { applySentimentStyle } = require("../../services/sentimentStyle");
 const { applyGuardrail } = require("../../services/guardrailService");
@@ -34,9 +35,15 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
     return;
   }
 
-  const postingDuration = Number(opts.postingDuration || 600000); // default 10 menit
-  const minDelay = Number(opts.minDelay || 60000);
-  const maxDelay = Number(opts.maxDelay || 180000);
+  // ✅ [IMPROVEMENT] Increase default delays and duration to mimic human behavior
+  // This reduces the chance of comments being marked as 'heldForReview' or spam.
+  const postingDuration = Number(opts.postingDuration || 3600000); // default 1 hour
+  const minDelay = Number(opts.minDelay || 300000); // 5 minutes
+  const maxDelay = Number(opts.maxDelay || 600000); // 10 minutes
+
+  // ✅ CHOOSE ENGINE BASED ON METHOD
+  const method = opts.method || "api";
+  const engine = getEngine(method);
 
   // ✅ GET FLOW CONFIG FROM OPTS
   const flowConfig = opts.flowConfig || {
@@ -55,20 +62,26 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
     return;
   }
 
+  // ✅ [IMPROVEMENT] SHUFFLE VIDEOS
+  // Randomizing the order prevents robotic sequential behavior visible in logs.
+  const shuffledVideos = [...videos].sort(() => Math.random() - 0.5);
+
   const endTime = Date.now() + postingDuration;
   store.startWorker(username, postingDuration);
 
-  pushLog({ type: "info", message: `Worker started for ${postingDuration} ms` });
+  pushLog({ type: "info", message: `Worker started (${method.toUpperCase()}) for ${postingDuration} ms` });
   pushLog({
     type: "config",
     runId,
     message:
+      `method=${method.toUpperCase()} | ` +
       `context=${flowConfig.use_context ? "ON" : "OFF"} | ` +
       `sentiment=${flowConfig.sentiment.enabled ? "ON" : "OFF"} | ` +
       `sentimentMode=${flowConfig.sentiment.mode} | ` +
       `commentAI=${flowConfig.use_comment_ai ? "ON" : "OFF"}`
   });
-  logger.info(`YouTube worker started for user: ${username}`);
+  logger.info(`YouTube worker started for user: ${username} using method: ${method}`);
+  console.log("DEBUG: fetchVideoMetadata type:", typeof fetchVideoMetadata);
 
   while (Date.now() < endTime) {
 
@@ -79,8 +92,8 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
       return;
     }
 
-    const video = videos[videoIndex];
-    videoIndex = (videoIndex + 1) % videos.length;
+    const video = shuffledVideos[videoIndex];
+    videoIndex = (videoIndex + 1) % shuffledVideos.length;
 
     const commentTpl = comments[Math.floor(Math.random() * comments.length)];
 
@@ -89,9 +102,8 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
 
 
       // ===== DECISION OBJECT =====
-      // console.log("DEBUG flowConfig:", JSON.stringify(flowConfig, null, 2));
-
       const decision = {
+        method, // Save method used
         use_context: flowConfig.use_context || false,
         sentiment_enabled: flowConfig.sentiment?.enabled || false,
         use_comment_ai: flowConfig.use_comment_ai || false,
@@ -99,8 +111,6 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
         sentimentSource: null,
         source: "file" // default
       };
-
-      // console.log("DEBUG decision:", JSON.stringify(decision, null, 2));
 
 
       // 1. CONTEXT ANALYSIS
@@ -120,7 +130,6 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
         decision.sentimentMode = mode;
 
         if (mode === "random") {
-          // MODE RANDOM (from file or general pool)
           const pool = store.getSentimentPool(username);
           if (pool && pool.length > 0) {
             targetSentiment = pool[Math.floor(Math.random() * pool.length)];
@@ -130,19 +139,14 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
             decision.sentimentSource = "random";
           }
         } else if (mode === "analyze") {
-          // MODE ANALYZE (from video context)
           if (contextSummary) {
             targetSentiment = await classifySentiment(contextSummary);
             decision.sentimentSource = "video_context";
           } else {
-            targetSentiment = "neutral"; // fallback
+            targetSentiment = "neutral";
             decision.sentimentSource = "fallback";
           }
         }
-
-        // Remove skip logic - always post
-        // if (targetSentiment === "sensitive") ...
-
         decision.sentiment = targetSentiment;
       }
 
@@ -166,22 +170,11 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
           decision.source = "file+context+ai";
         }
       } else {
-        // No AI rewrite, just pure file or minor adjustments
         decision.source = "file";
       }
 
       // 4. GUARDRAIL
       const guard = await applyGuardrail(finalComment);
-      // if (!guard.safe) {
-      //   store.updateVideoStatus(username, video.videoId, "skipped_unsafe", guard.reason);
-      //   pushLog({
-      //     type: "video",
-      //     runId,
-      //     item: video,
-      //     message: `⚠️ Skipped Unsafe: ${guard.reason}`
-      //   });
-      //   continue;
-      // }
 
 
       // 5. POSTING
@@ -197,10 +190,25 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
         continue;
       }
 
-      const result = await postComment(video.videoId, finalComment);
+      // ✅ POST USING SELECTED ENGINE
+      const result = await engine.post(video.videoId, finalComment, opts);
 
-      // LOGIC VISIBILITY CHECK DARI RESULT API
+      if (result.status === "error") {
+        logger.error(`Engine Error (${method}): ${result.message}`);
+        store.updateVideoStatus(username, video.videoId, "error", result.message);
+        pushLog({
+          type: "video",
+          runId,
+          item: video,
+          message: `❌ Engine Error: ${result.message}`
+        });
+        await wait(1000);
+        continue;
+      }
+
+      // LOGIC VISIBILITY CHECK DARI RESULT API / ENGINE
       decision.moderationStatus = result.moderationStatus || "published";
+      decision.engine_msg = result.message || "";
 
       store.updateVideoStatus(username, video.videoId, "done", finalComment, decision);
 

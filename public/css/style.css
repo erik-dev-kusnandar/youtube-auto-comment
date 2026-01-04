@@ -1,54 +1,27 @@
-body {
-  background: #f4f5f7;
-  font-size: 13px;
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* Prevent body scroll */
 }
 
-.dropzone {
-  border: 2px dashed #7d8aff;
-  padding: 25px;
-  text-align: center;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  background: #fafbff;
-  transition: .2s;
-  font: 1em sans-serif;
-}
-
-.dropzone:hover {
-  background: #eef1ff;
-}
-
-.upload-msg {
-  font-size: 13px;
-  color: #28a745;
-  padding-top: 6px;
-}
-
-.log-box {
-  height: 250px;
-  background: #111;
-  color: #0f0;
-  padding: 10px;
-  border-radius: 5px;
+.scroll-col {
+  height: calc(100vh - 50px); /* Adjust based on header height */
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
-.toast-container {
-  z-index: 99999;
+header {
+  height: 50px;
+  z-index: 1030;
 }
 
 .badge-merah {
   background-color: #FF0000;
-  /* Kode HEX untuk merah */
   color: white;
-  /* Untuk teks putih agar terbaca */
   padding: 0.35em 0.65em;
-  /* Padding standar badge */
   border-radius: 0.25rem;
-  /* Radius sudut */
   font-size: 0.875em;
-  /* Ukuran font standar */
+  font-weight: bold;
 }
 
 

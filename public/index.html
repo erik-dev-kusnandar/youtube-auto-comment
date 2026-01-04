@@ -11,9 +11,10 @@
 </head>
 
 <body class="bg-light">
-  <div class="container-fluid px-2 py-2">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h6><span class="badge badge-merah">YOUTUBE</span> Auto-Comment</h6>
+  <div class="container-fluid h-100 d-flex flex-column p-0">
+    <header
+      class="sticky-top bg-white border-bottom px-3 py-2 d-flex justify-content-between align-items-center shadow-sm">
+      <h6 class="m-0"><span class="badge badge-merah">YOUTUBE</span> Auto-Comment</h6>
 
       <!-- User Profile Dropdown -->
       <div class="dropdown">
@@ -30,13 +31,54 @@
           <li><a class="dropdown-item text-danger" href="#" id="logoutBtn">🚪 Logout</a></li>
         </ul>
       </div>
-    </div>
+    </header>
 
-    <div class="row g-4">
-      <div class="col-md-4 pe-1">
-        <div class="card mb-3">
-          <div class="card-header">📁 Upload Video List (CSV) <small class="text-muted">header: video_url or
-              videoId</small></div>
+    <div class="row g-0 flex-grow-1 overflow-hidden">
+      <!-- Left Column -->
+      <div class="col-md-4 border-end bg-white scroll-col p-3">
+        <!-- 🎯 Posting Method Selection -->
+        <div class="card mb-3 shadow-sm">
+          <div class="card-header fw-bold">
+            🎯 Choose Posting Method
+          </div>
+          <div class="card-body">
+            <select id="postingMethod" class="form-select form-select-sm">
+              <option value="api">Youtube API (Fast, but risk of review)</option>
+              <option value="appium">Mobile App (Appium - Human-like)</option>
+              <option value="web">Web Browser (Puppeteer - Web-Headless)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 📱 Device Connection Card (Visible only when Appium is selected) -->
+        <div id="appiumSettings" class="card mb-3 shadow-sm" style="display: none;">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>📱 Device Management</span>
+            <span id="connectionStatus" class="badge bg-danger">Disconnected</span>
+          </div>
+          <div class="card-body">
+            <div class="mb-2">
+              <label class="form-label small fw-bold">ADB Device ID / Name</label>
+              <input type="text" id="deviceId" class="form-control form-control-sm" placeholder="e.g. emulator-5554"
+                value="emulator-5554">
+            </div>
+            <button id="testConnBtn" class="btn btn-primary btn-sm w-100">🔌 Test Connection</button>
+          </div>
+        </div>
+
+        <!-- 🌐 Web Browser Settings (Visible only when Web is selected) -->
+        <div id="webSettings" class="card mb-3 shadow-sm" style="display: none;">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>🌐 Web Browser Setup</span>
+          </div>
+          <div class="card-body">
+            <p class="small text-muted mb-2">You must login to YouTube manually once before posting.</p>
+            <button id="openWebLoginBtn" class="btn btn-outline-info btn-sm w-100">🔓 Open Browser (Setup
+              Login)</button>
+          </div>
+        </div>
+        <div class="card mb-3 shadow-sm">
+          <div class="card-header">📁 Upload Video List (CSV)</div>
           <div class="card-body">
             <div id="videosDrop" class="dropzone p-3 mb-2">Drop CSV here or click to pick</div>
             <input id="videosFileInput" type="file" accept=".csv" hidden />
@@ -45,7 +87,7 @@
           </div>
         </div>
 
-        <div class="card mb-3">
+        <div class="card mb-3 shadow-sm">
           <div class="card-header">💬 Upload Comment List (CSV) <small class="text-muted">header: comment_text</small>
           </div>
           <div class="card-body">
@@ -59,7 +101,7 @@
             <ul id="commentPreview" class="list-group list-group-flush"></ul>
           </div>
         </div>
-        <div class="card mb-3">
+        <div class="card mb-3 shadow-sm">
           <div class="card-header">
             ⚙️ Comment Engine Settings
           </div>
@@ -93,7 +135,7 @@
 
           </div>
         </div>
-        <div class="card mt-3">
+        <div class="card mt-3 shadow-sm">
           <div class="card-header">
             🎭 Sentiment Settings
           </div>
@@ -185,14 +227,17 @@
           </div>
         </div>
 
-        <div class="card">
+        <div class="card mt-3 shadow-sm">
+          <div class="card-header">
+            🕰 Timer Settings
+          </div>
           <div class="card-body">
             <label class="form-label">Posting duration (ms):</label>
-            <input id="postingDuration" type="number" class="form-control mb-3" value="120000" />
+            <input id="postingDuration" type="number" class="form-control mb-3" value="3600000" />
             <label class="form-label">MinDelay per comment (ms):</label>
-            <input id="minDelayPerComment" type="number" class="form-control mb-3" value="30000" />
+            <input id="minDelayPerComment" type="number" class="form-control mb-3" value="300000" />
             <label class="form-label">MaxDelay per comment (ms):</label>
-            <input id="maxDelayPerComment" type="number" class="form-control mb-3" value="60000" />
+            <input id="maxDelayPerComment" type="number" class="form-control mb-3" value="600000" />
             <button id="startBtn" class="btn btn-success w-100 mb-2">🚀 Start Posting</button>
             <button id="dryRunBtn" class="btn btn-outline-primary w-100 mb-2">
               👁 Dry-Run Preview
@@ -203,7 +248,8 @@
         </div>
       </div>
 
-      <div class="col-md-8 ps-1">
+      <!-- Right Column -->
+      <div class="col-md-8 bg-light scroll-col p-3">
         <div class="card mb-3">
           <div class="card-header d-flex justify-content-between align-items-center">
             <span>🖥 Live Log</span>

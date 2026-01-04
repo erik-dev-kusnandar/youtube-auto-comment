@@ -283,24 +283,28 @@ startBtn.addEventListener("click", async () => {
   stopBtn.disabled = false;
 
   const postingDuration = Number(
-    document.getElementById("postingDuration").value || 120000
+    document.getElementById("postingDuration").value || 3600000
   );
 
   const minDelay = Number(
-    document.getElementById("minDelayPerComment").value || 30000
+    document.getElementById("minDelayPerComment").value || 300000
   );
 
   const maxDelay = Number(
-    document.getElementById("maxDelayPerComment").value || 60000
+    document.getElementById("maxDelayPerComment").value || 600000
   );
 
-  const runId = generateRunId();
+  const method = document.getElementById("postingMethod").value;
+  const deviceId = document.getElementById("deviceId").value;
+  const runId = "RUN#" + Date.now();
 
   const payload = {
     postingDuration,
     minDelay,
     maxDelay,
     runId,
+    method,
+    deviceId,
     flowConfig: {
       use_context: document.getElementById("toggleContextAI").checked,
       use_comment_ai: document.getElementById("toggleCommentAI").checked,
@@ -559,7 +563,105 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
   }
 });
 
+// ===== POSTING METHOD SELECTION =====
+const postingMethod = document.getElementById("postingMethod");
+const webSettings = document.getElementById("webSettings");
+const openWebLoginBtn = document.getElementById("openWebLoginBtn");
+const appiumSettings = document.getElementById("appiumSettings");
+const testConnBtn = document.getElementById("testConnBtn");
+const connectionStatus = document.getElementById("connectionStatus");
+const deviceIdInput = document.getElementById("deviceId");
+
+postingMethod.addEventListener("change", () => {
+  const val = postingMethod.value;
+  if (val === "appium") {
+    appiumSettings.style.display = "block";
+    webSettings.style.display = "none";
+    checkAppiumConnectionState();
+  } else if (val === "web") {
+    appiumSettings.style.display = "none";
+    webSettings.style.display = "block";
+    startBtn.disabled = false;
+  } else {
+    appiumSettings.style.display = "none";
+    webSettings.style.display = "none";
+    unlockUIForAPI();
+  }
+});
+
+openWebLoginBtn.addEventListener("click", async () => {
+  openWebLoginBtn.disabled = true;
+  openWebLoginBtn.textContent = "⌛ Opening Browser...";
+  try {
+    const res = await fetch("/web/setup-login", { method: "POST" });
+    const json = await res.json();
+    if (json.ok) {
+      showToast("Browser opened! Please login to YouTube.", "success");
+    } else {
+      showToast(json.message || "Failed to open browser", "danger");
+    }
+  } catch (e) {
+    showToast("Error connecting to server", "danger");
+  } finally {
+    openWebLoginBtn.disabled = false;
+    openWebLoginBtn.textContent = "🔓 Open Browser (Setup Login)";
+  }
+});
+
+testConnBtn.addEventListener("click", async () => {
+  const deviceId = deviceIdInput.value;
+  if (!deviceId) return showToast("Please enter a device ID", "warning");
+
+  connectionStatus.textContent = "Testing...";
+  connectionStatus.className = "badge bg-warning text-dark";
+  testConnBtn.disabled = true;
+
+  try {
+    const res = await fetch("/appium/test-connection", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId })
+    });
+    const json = await res.json();
+
+    if (json.ok) {
+      connectionStatus.textContent = "Connected";
+      connectionStatus.className = "badge bg-success";
+      startBtn.disabled = false;
+      showToast("Device connected successfully! 🎉", "success");
+    } else {
+      connectionStatus.textContent = "Failed";
+      connectionStatus.className = "badge bg-danger";
+      startBtn.disabled = true;
+      showToast("Connection failed. Check Appium Server and ADB.", "danger");
+    }
+  } catch (e) {
+    connectionStatus.textContent = "Error";
+    connectionStatus.className = "badge bg-danger";
+    startBtn.disabled = true;
+    showToast("Error testing connection", "danger");
+  } finally {
+    testConnBtn.disabled = false;
+  }
+});
+
+function unlockUIForAPI() {
+  startBtn.disabled = false;
+  connectionStatus.className = "badge bg-secondary";
+  connectionStatus.textContent = "N/A (API Mode)";
+}
+
+function checkAppiumConnectionState() {
+  if (connectionStatus.textContent !== "Connected") {
+    startBtn.disabled = true;
+  } else {
+    startBtn.disabled = false;
+  }
+}
+
 // Load user profile on startup
 document.addEventListener("DOMContentLoaded", () => {
   fetchUserProfile();
+  // Initialize UI state
+  postingMethod.dispatchEvent(new Event('change'));
 });
