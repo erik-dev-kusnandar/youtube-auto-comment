@@ -62,14 +62,19 @@ class WebEngine {
                 await new Promise(r => setTimeout(r, 3000));
             }
 
+            // Verify login status via avatar
+            const avatarFound = await page.$("yt-img-shadow#avatar") !== null;
+            if (!avatarFound) {
+                logger.warn("[WebEngine] User avatar not found. This might indicate the session in 'puppeteer_data' has expired or is invalid for Linux.");
+            }
+
             // 2. Click comment box
             const commentSelectors = [
-                "div#contenteditable-root[aria-label='Add a comment...']",
+                "div#placeholder-area",
                 "yt-formatted-string#simplebox-placeholder",
-                "#placeholder-area",
                 "#simplebox-placeholder",
-                "#contenteditable-root",
-                "ytd-comment-simplebox-renderer"
+                "ytd-comment-simplebox-renderer",
+                "#contenteditable-root"
             ];
 
             let clicked = false;
@@ -77,7 +82,8 @@ class WebEngine {
                 try {
                     const element = await page.waitForSelector(selector, { timeout: 4000, visible: true });
                     if (element) {
-                        await element.click();
+                        // Use evaluate for a more "native" click if standard click fails
+                        await page.evaluate(el => el.click(), element);
                         clicked = true;
                         logger.info(`[WebEngine] Clicked comment box via: ${selector}`);
                         break;
@@ -87,12 +93,12 @@ class WebEngine {
 
             if (!clicked) {
                 const ss = path.join(logsDir, `fail_find_box_${videoId}.png`);
-                await page.screenshot({ path: ss });
-                throw new Error("Could not find comment box. Screenshot saved. Check if logged in via 'Setup Login'.");
+                await page.screenshot({ path: ss, fullPage: true });
+                throw new Error("Could not find comment box. Check 'logs' for screenshot. Is your YouTube account restricted or session expired?");
             }
 
             // Wait for input to be ready after click
-            await new Promise(r => setTimeout(r, 2000));
+            await new Promise(r => setTimeout(r, 3000));
 
             // 3. Type text (Human delay)
             logger.info("[WebEngine] Typing comment...");
@@ -104,10 +110,12 @@ class WebEngine {
             ];
 
             let inputElement = null;
+            let usedSelector = "";
             for (const sel of inputSelectors) {
                 try {
-                    inputElement = await page.waitForSelector(sel, { timeout: 3000, visible: true });
+                    inputElement = await page.waitForSelector(sel, { timeout: 4000, visible: true });
                     if (inputElement) {
+                        usedSelector = sel;
                         logger.info(`[WebEngine] Found input element via: ${sel}`);
                         break;
                     }
@@ -116,8 +124,8 @@ class WebEngine {
 
             if (!inputElement) {
                 const ss = path.join(logsDir, `fail_input_box_${videoId}.png`);
-                await page.screenshot({ path: ss });
-                throw new Error("Could not find typing area (#contenteditable-root).");
+                await page.screenshot({ path: ss, fullPage: true });
+                throw new Error("Could not find typing area. Check 'logs' for screenshot.");
             }
 
             await inputElement.focus();
@@ -146,7 +154,7 @@ class WebEngine {
                     if (btn) {
                         const isEnabled = await page.evaluate(el => {
                             const b = el.querySelector('button') || el;
-                            return !b.hasAttribute('disabled') && b.getAttribute('aria-disabled') !== 'true';
+                            return b && !b.hasAttribute('disabled') && b.getAttribute('aria-disabled') !== 'true';
                         }, btn);
 
                         if (isEnabled) {
@@ -161,7 +169,7 @@ class WebEngine {
 
             if (!submitted) {
                 const ss = path.join(logsDir, `fail_submit_${videoId}.png`);
-                await page.screenshot({ path: ss });
+                await page.screenshot({ path: ss, fullPage: true });
                 throw new Error("Comment button not found or disabled. Check if your account is restricted.");
             }
 
@@ -172,11 +180,11 @@ class WebEngine {
             const stillInBox = await page.evaluate((sel) => {
                 const el = document.querySelector(sel);
                 return el && el.textContent.trim().length > 0;
-            }, inputSelector);
+            }, usedSelector || "#contenteditable-root");
 
             if (stillInBox) {
                 const ss = path.join(logsDir, `verify_failed_${videoId}.png`);
-                await page.screenshot({ path: ss });
+                await page.screenshot({ path: ss, fullPage: true });
                 throw new Error("Comment verification failed: Text still remains in input box after submit.");
             }
 
