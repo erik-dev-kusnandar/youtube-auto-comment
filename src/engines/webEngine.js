@@ -43,9 +43,14 @@ class WebEngine {
 
             // 1. Wait and Scroll (Lazy Load)
             logger.info("[WebEngine] Waiting for page and scrolling...");
+
+            // Random initial delay to simulate human "looking" at the page
+            await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
+
             for (let i = 0; i < 5; i++) {
                 await page.evaluate(() => window.scrollBy(0, 500));
-                await new Promise(r => setTimeout(r, 1200));
+                // Randomize scroll delay
+                await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
             }
 
             try {

@@ -192,6 +192,49 @@ document.getElementById("refreshBtn").addEventListener("click", refreshProgress)
 refreshProgress();
 setInterval(refreshProgress, 5000);
 
+// export to CSV
+async function exportToCSV() {
+  try {
+    const res = await fetch("/progress");
+    if (!res.ok) throw new Error("Failed to fetch progress");
+    const json = await res.json();
+    const videos = json.videos || [];
+
+    if (videos.length === 0) {
+      showToast("No data to export", "warning");
+      return;
+    }
+
+    // Prepare data for CSV
+    const data = videos.map((v, index) => ({
+      "#": index + 1,
+      "Video URL": v.url,
+      "Video ID": v.videoId,
+      "Status": v.status,
+      "Comment": v.comment
+    }));
+
+    // Generate CSV using PapaParse (already in dependencies)
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `youtube_comment_results_${new Date().getTime()}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast("Export successful!", "success");
+  } catch (err) {
+    console.error(err);
+    showToast("Export failed", "danger");
+  }
+}
+
+document.getElementById("exportBtn").addEventListener("click", exportToCSV);
+
 // comment preview loader
 async function loadCommentPreview() {
   try {
