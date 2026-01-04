@@ -11,6 +11,9 @@ const TOKEN_PATH = store.TOKEN_PATH;
 function loadRefreshToken() {
   if (!fs.existsSync(TOKEN_PATH)) throw new Error("No token file");
   const data = JSON.parse(fs.readFileSync(TOKEN_PATH));
+  if (!data.accounts || !data.accounts.default || !data.accounts.default.refresh_token) {
+    throw new Error("YouTube API not authenticated. Please run auth first.");
+  }
   return data.accounts.default.refresh_token;
 }
 

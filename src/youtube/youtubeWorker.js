@@ -157,7 +157,7 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
         decision.use_comment_ai = true;
 
         if (flowConfig.sentiment?.enabled) {
-          finalComment = await applySentimentStyle(finalComment, targetSentiment);
+          finalComment = await applySentimentStyle({ text: finalComment, sentiment: targetSentiment });
           decision.source = "file+sentiment";
         }
 
