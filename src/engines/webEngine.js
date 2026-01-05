@@ -236,24 +236,22 @@ class WebEngine {
             await page.setViewport({ width: 1280, height: 800 });
             await page.goto("https://www.youtube.com", { waitUntil: "networkidle2" });
 
+            // 🍪 Periodic Save (Every 5s) because 'disconnected' event is too late to fetch cookies
+            const saveInterval = setInterval(async () => {
+                try {
+                    const cookies = await page.cookies();
+                    const dataDir = path.join(process.cwd(), "data");
+                    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+                    fs.writeFileSync(path.join(dataDir, "youtube_cookies.json"), JSON.stringify(cookies, null, 2));
+                } catch (e) {
+                    // Silently fail if page is closing/closed
+                }
+            }, 5000);
+
             return new Promise((resolve) => {
-                browser.on("disconnected", async () => {
+                browser.on("disconnected", () => {
+                    clearInterval(saveInterval);
                     logger.info("[WebEngine] Browser closed by user.");
-
-                    // 🍪 Save Cookies on close
-                    try {
-                        const pages = await browser.pages();
-                        if (pages.length > 0) {
-                            const cookies = await pages[0].cookies();
-                            const dataDir = path.join(process.cwd(), "data");
-                            if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
-                            fs.writeFileSync(path.join(dataDir, "youtube_cookies.json"), JSON.stringify(cookies, null, 2));
-                            logger.info("[WebEngine] Cookies saved to data/youtube_cookies.json");
-                        }
-                    } catch (e) {
-                        logger.error(`[WebEngine] Failed to save cookies: ${e.message}`);
-                    }
-
                     resolve({ ok: true });
                 });
             });
