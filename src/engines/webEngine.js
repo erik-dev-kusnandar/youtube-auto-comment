@@ -42,6 +42,8 @@ class WebEngine {
                 } catch (e) {
                     logger.error(`[WebEngine] Failed to load cookies: ${e.message}`);
                 }
+            } else {
+                logger.warn(`[WebEngine] youtube_cookies.json NOT FOUND at ${cookiePath}. Browser will start in Guest mode (Logged out).`);
             }
 
             // Mask automation
