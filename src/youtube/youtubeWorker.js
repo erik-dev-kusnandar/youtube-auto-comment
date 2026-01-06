@@ -55,6 +55,9 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
     }
   };
 
+  // ✅ GET AI MODE
+  const aiMode = flowConfig.ai_mode || "rewrite"; // default to rewrite for backward compatibility
+
   const runId = opts.runId || `RUN#${Date.now()}`;
 
   if (store.isWorkerRunning(username)) {
@@ -162,12 +165,16 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
         }
 
         if (metadata && contextSummary) {
+          // [IMPROVEMENT] PURE AI MODE CHECK:
+          // If aiMode is 'pure' OR context is available and we want better naturalness.
+          const triggerPureAI = aiMode === "pure" || !finalComment;
+
           finalComment = await rewriteComment({
             title: metadata.title,
             description: metadata.description?.slice(0, 500) || "",
-            draft: finalComment
+            draft: triggerPureAI ? null : finalComment
           });
-          decision.source = "file+context+ai";
+          decision.source = triggerPureAI ? "pure_ai_context" : "file+context+ai";
         }
       } else {
         decision.source = "file";
@@ -219,7 +226,8 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
         decision.moderationStatus = result.moderationStatus || "published";
         decision.engine_msg = result.message || "";
 
-        store.updateVideoStatus(username, video.videoId, "done", finalComment, decision);
+        const videoStatus = decision.moderationStatus === "held_for_review" ? "held_for_review" : "done";
+        store.updateVideoStatus(username, video.videoId, videoStatus, finalComment, decision);
 
         // STORE LOG (Persist to file)
         store.addPostingLog(username, {

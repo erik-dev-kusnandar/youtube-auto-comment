@@ -11,7 +11,9 @@
   "nodemonConfig": {
     "ignore": [
       "uploads/*",
-      "data/*"
+      "data/*",
+      "logs/*",
+      "puppeteer_data/*"
     ]
   },
   "dependencies": {

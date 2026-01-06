@@ -100,7 +100,7 @@ function connectSSE() {
           : "";
         const moderationStatus = msg.message?.moderationStatus || "unknown";
         const statusIcon = moderationStatus === "published" ? "✅" :
-          moderationStatus === "heldForReview" ? "⏳" : "❓";
+          (moderationStatus === "held_for_review" || moderationStatus === "heldForReview") ? "⚠️" : "❓";
         line = `[${time}] ${rid}[VIDEO] ${msg.item?.videoId || ""}
  ├─ Pakai Context AI=${d.use_context ? "ON" : "OFF"} | Aktifkan Sentiment=${d.sentiment_enabled ? "ON" : "OFF"}${sentimentInfo} | Komen Pakai AI=${d.use_comment_ai ? "ON" : "OFF"}
  ├─ Status: ${statusIcon} ${moderationStatus}
@@ -354,7 +354,8 @@ startBtn.addEventListener("click", async () => {
       sentiment: {
         enabled: document.getElementById("toggleSentimentEnable").checked,
         mode: document.getElementById("sentimentMode").value
-      }
+      },
+      ai_mode: document.getElementById("aiMode").value
     }
   };
 
@@ -399,7 +400,8 @@ dryRunBtn.addEventListener("click", async () => {
         sentiment: {
           enabled: document.getElementById("toggleSentimentEnable").checked,
           mode: document.getElementById("sentimentMode").value
-        }
+        },
+        ai_mode: document.getElementById("aiMode").value
       }
     };
 
@@ -428,7 +430,13 @@ dryRunBtn.addEventListener("click", async () => {
 function renderStatus(v) {
   if (!v.status) return "";
 
-  let html = `<div><strong>${v.status}</strong></div>`;
+  let badgeClass = "badge bg-secondary";
+  if (v.status === "done") badgeClass = "badge bg-success";
+  else if (v.status === "processing") badgeClass = "badge bg-info text-dark";
+  else if (v.status === "error") badgeClass = "badge bg-danger";
+  else if (v.status === "held_for_review") badgeClass = "badge bg-warning text-dark";
+
+  let html = `<div><span class="${badgeClass}">${v.status}</span></div>`;
 
   if (v.decision) {
     const d = v.decision;
@@ -704,7 +712,13 @@ function checkAppiumConnectionState() {
 
 // Load user profile on startup
 document.addEventListener("DOMContentLoaded", () => {
-  fetchUserProfile();
   // Initialize UI state
   postingMethod.dispatchEvent(new Event('change'));
+
+  // Toggle AI Mode Container
+  const toggleCommentAI = document.getElementById("toggleCommentAI");
+  const aiModeContainer = document.getElementById("aiModeContainer");
+  toggleCommentAI.addEventListener("change", () => {
+    aiModeContainer.style.display = toggleCommentAI.checked ? "block" : "none";
+  });
 });

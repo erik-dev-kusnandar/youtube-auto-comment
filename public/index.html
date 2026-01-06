@@ -129,8 +129,20 @@
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="toggleCommentAI">
               <label class="form-check-label" for="toggleCommentAI">
-                Komen Pakai AI (Rewrite / Generate)
+                Komen Pakai AI
               </label>
+            </div>
+
+            <!-- AI Mode Selection -->
+            <div id="aiModeContainer" class="mt-2 ms-4" style="display: none;">
+              <label class="form-label small fw-bold">Pilih Mode AI</label>
+              <select id="aiMode" class="form-select form-select-sm">
+                <option value="rewrite">Rewrite Komentar (Pakai File Draft)</option>
+                <option value="pure">Murni AI (Tanpa File - dari Konteks)</option>
+              </select>
+              <small class="text-muted" style="font-size: 11px;">
+                Mode Murni AI menghasilkan komentar lebih natural dari analisa video.
+              </small>
             </div>
 
           </div>

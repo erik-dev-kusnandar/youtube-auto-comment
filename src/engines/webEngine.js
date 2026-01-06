@@ -24,6 +24,7 @@ class WebEngine {
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
                     "--disable-blink-features=AutomationControlled",
+                    "--disable-features=IsolateOrigins,site-per-process",
                     "--window-size=1280,800"
                 ],
                 userDataDir
@@ -62,9 +63,10 @@ class WebEngine {
             await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
 
             for (let i = 0; i < 5; i++) {
-                await page.evaluate(() => window.scrollBy(0, 500));
+                const scrollAmount = 300 + Math.floor(Math.random() * 400);
+                await page.evaluate((amt) => window.scrollBy(0, amt), scrollAmount);
                 // Randomize scroll delay
-                await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+                await new Promise(r => setTimeout(r, 1500 + Math.random() * 2000));
             }
 
             try {
@@ -80,6 +82,30 @@ class WebEngine {
             const avatarFound = await page.$("yt-img-shadow#avatar") !== null;
             if (!avatarFound) {
                 logger.warn("[WebEngine] User avatar not found. This might indicate the session in 'puppeteer_data' has expired or is invalid for Linux.");
+            }
+
+            // [ADVANCED EVASION] 1.5. Watch Time Simulation
+            const watchTime = 20000 + Math.random() * 20000;
+            logger.info(`[WebEngine] Simulating watch time: ${Math.round(watchTime / 1000)}s`);
+
+            const startTime = Date.now();
+            while (Date.now() - startTime < watchTime) {
+                // Erratic scrolling during "watching"
+                const action = Math.random();
+                if (action > 0.8) {
+                    const amt = (Math.random() > 0.5 ? 1 : -1) * (100 + Math.random() * 200);
+                    await page.evaluate((a) => window.scrollBy(0, a), amt);
+                } else if (action > 0.6) {
+                    // Hover over random elements
+                    try {
+                        const links = await page.$$("a#video-title, #description-text, ytd-menu-renderer");
+                        if (links.length > 0) {
+                            const randLink = links[Math.floor(Math.random() * links.length)];
+                            await randLink.hover();
+                        }
+                    } catch (e) { }
+                }
+                await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
             }
 
             // 2. Click comment box
@@ -149,8 +175,19 @@ class WebEngine {
                 if (el) el.textContent = "";
             }, inputElement);
 
-            await page.keyboard.type(text, { delay: 100 });
-            await new Promise(r => setTimeout(r, 1500));
+            // [IMPROVEMENT] Human-like typing with variation
+            for (const char of text) {
+                await page.keyboard.sendCharacter(char);
+                // Faster typing with occasional mistakes simulation would be here but for now just random delay
+                await new Promise(r => setTimeout(r, 40 + Math.random() * 120));
+
+                // Random pause
+                if (Math.random() > 0.96) {
+                    await new Promise(r => setTimeout(r, 800 + Math.random() * 1500));
+                }
+            }
+            // Delay before clicking submit button
+            await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
 
             // 4. Submit
             logger.info("[WebEngine] Finding submit button...");
@@ -201,6 +238,32 @@ class WebEngine {
                 await page.screenshot({ path: ss, fullPage: true });
                 throw new Error("Comment verification failed: Text still remains in input box after submit.");
             }
+
+            // [IMPROVEMENT] Second layer verification: Check if comment appears in list
+            logger.info("[WebEngine] Secondary verification: checking if comment is in list...");
+            await new Promise(r => setTimeout(r, 8000));
+            const commentAppeared = await page.evaluate((txt) => {
+                const comments = Array.from(document.querySelectorAll("#content-text"));
+                return comments.some(c => c.textContent.includes(txt.trim()));
+            }, text);
+
+            if (!commentAppeared) {
+                logger.warn("[WebEngine] Comment not found in recent comments. It might be 'Held for Review' or shadowbanned.");
+                return {
+                    status: "success",
+                    moderationStatus: "held_for_review",
+                    engine: "web",
+                    message: "Posted but NOT visible in list (likely Held for Review/Shadowbanned)"
+                };
+            }
+
+            // [ADVANCED EVASION] 6. Post-Post Stay
+            const stayTime = 10000 + Math.random() * 10000;
+            logger.info(`[WebEngine] Post-post stay: ${Math.round(stayTime / 1000)}s to simulate user interaction after posting.`);
+            await new Promise(r => setTimeout(r, stayTime));
+
+            // Final erratic scroll
+            await page.evaluate(() => window.scrollBy(0, -300));
 
             logger.info("[WebEngine] Post verified successfully!");
             return {
