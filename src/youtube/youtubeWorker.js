@@ -8,6 +8,7 @@ const { applySentimentStyle } = require("../../services/sentimentStyle");
 const { applyGuardrail } = require("../../services/guardrailService");
 const { classifySentiment, pickRandomSentiment } = require("../../services/sentimentService");
 const defaultConfig = require("../../config/loadConfig");
+const { processSpintax } = require("../utils");
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const rand = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
@@ -21,6 +22,15 @@ const isDuplicate = (videoId, comment) => {
 };
 
 let videoIndex = 0;
+
+async function waitWithStopCheck(ms, username) {
+  const steps = Math.ceil(ms / 1000);
+  for (let i = 0; i < steps; i++) {
+    if (store.shouldStop(username)) return true; // Stop signal
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  return false;
+}
 
 async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
   if (!username) {
@@ -86,7 +96,30 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
   logger.info(`YouTube worker started for user: ${username} using method: ${method}`);
   console.log("DEBUG: fetchVideoMetadata type:", typeof fetchVideoMetadata);
 
-  while (Date.now() < endTime) {
+  // ✅ CHECK MODE: DURATION VS LIST
+  const limitByDuration = opts.limitByDuration !== false; // default true if undefined
+
+  if (limitByDuration) {
+    pushLog({ type: "config", message: `Stopping by TIMER: ${postingDuration}ms` });
+  } else {
+    pushLog({ type: "config", message: `Stopping by LIST SIZE: ${shuffledVideos.length} videos` });
+  }
+
+  let processedCount = 0;
+
+  while (true) {
+    // 1. CHECK STOP CONDITION
+    if (limitByDuration) {
+      if (Date.now() >= endTime) {
+        pushLog({ type: "finished", message: "Time limit reached." });
+        break;
+      }
+    } else {
+      if (processedCount >= shuffledVideos.length) {
+        pushLog({ type: "finished", message: "All videos in list processed." });
+        break;
+      }
+    }
 
     // ⛔ STOP REQUEST CHECK
     if (store.shouldStop(username)) {
@@ -97,6 +130,7 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
 
     const video = shuffledVideos[videoIndex];
     videoIndex = (videoIndex + 1) % shuffledVideos.length;
+    processedCount++;
 
     const commentTpl = comments[Math.floor(Math.random() * comments.length)];
 
@@ -154,27 +188,49 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
       }
 
       // 3. COMMENT GENERATION
-      let finalComment = commentTpl.text;
+      let finalComment = processSpintax(commentTpl.text); // ✅ PROCESS SPINTAX HERE
 
       if (flowConfig.use_comment_ai) {
         decision.use_comment_ai = true;
 
         if (flowConfig.sentiment?.enabled) {
+          // Note: If reusing draft as footer, sentiment style might be skipped or applied only to AI part?
+          // For now let's keep sentiment logic simple or apply it to the draft before appending
           finalComment = await applySentimentStyle({ text: finalComment, sentiment: targetSentiment });
           decision.source = "file+sentiment";
         }
 
-        if (metadata && contextSummary) {
-          // [IMPROVEMENT] PURE AI MODE CHECK:
-          // If aiMode is 'pure' OR context is available and we want better naturalness.
-          const triggerPureAI = aiMode === "pure" || !finalComment;
+        if (metadata && contextSummary && finalComment) {
+          // ✅ LOGIC BARU: Context AI (Top) + Raw Draft (Bottom)
+          // User Request: "hasil AI dari 'Ambil Context Video' posisi di atas dan raw komen dari file di tempatkan paling bawah"
 
-          finalComment = await rewriteComment({
-            title: metadata.title,
-            description: metadata.description?.slice(0, 500) || "",
-            draft: triggerPureAI ? null : finalComment
+          try {
+            // 1. Generate Opinion from Context (Pure AI)
+            const aiReview = await rewriteComment({
+              title: metadata.title,
+              description: metadata.description?.slice(0, 500) || "",
+              draft: null // Trigger Pure AI generation
+            });
+
+            // 2. Combine: AI Review + Original Draft (Footer/Link)
+            if (aiReview) {
+              finalComment = `${aiReview}\n\n${finalComment}`;
+              decision.source = "ai_context_review+file_footer";
+            }
+          } catch (e) {
+            pushLog({ type: "warn", item: video, message: "AI Context gen failed, using draft only" });
+          }
+
+        } else if (aiMode === "rewrite") {
+          // Fallback if no context or just rewrite mode without context?
+          // Actually if use_context is OFF, we probably just rewrite the draft to be unique
+          const rewritten = await rewriteComment({
+            title: "",
+            description: "",
+            draft: finalComment
           });
-          decision.source = triggerPureAI ? "pure_ai_context" : "file+context+ai";
+          if (rewritten) finalComment = rewritten;
+          decision.source = "rewrite_no_context";
         }
       } else {
         decision.source = "file";
@@ -275,7 +331,14 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
       type: "info",
       message: `Waiting ${Math.round(delay / 1000)}s before next comment...`
     });
-    await wait(delay);
+
+    // ✅ Responsive Wait
+    const stopped = await waitWithStopCheck(delay, username);
+    if (stopped) {
+      pushLog({ type: "warn", message: "Stop requested during delay, halting..." });
+      store.finishWorker(username);
+      return;
+    }
   }
 
   store.finishWorker(username);

@@ -57,10 +57,24 @@ function randomDelay(minMs, maxMs) {
   return Math.floor(Math.random() * (maxMs - minMs + 1) + minMs);
 }
 
+function processSpintax(text) {
+  if (!text) return "";
+  const regex = /\{([^{}]+)\}/g;
+  let processed = text;
+  while (regex.test(processed)) {
+    processed = processed.replace(regex, (match, content) => {
+      const choices = content.split('|');
+      return choices[Math.floor(Math.random() * choices.length)];
+    });
+  }
+  return processed;
+}
+
 
 module.exports = {
   extractVideoId,
   pickSmartComments,
-  randomDelay
+  randomDelay,
+  processSpintax
 };
 // End of src/utils.js

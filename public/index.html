@@ -111,26 +111,28 @@
             <div class="form-check form-switch mb-2">
               <input class="form-check-input" type="checkbox" id="toggleContextAI" checked>
               <label class="form-check-label" for="toggleContextAI">
-                Pakai Context AI (Title + Description)
+                Ambil Context Video (Judul + Deskripsi)
               </label>
+              <div class="form-text" style="font-size: 11px;">
+                Jika OFF: AI tidak akan tahu isi video (hanya rewrite text saja).
+              </div>
             </div>
-
-            <!-- Sub Toggle Sentiment -->
-            <!-- <div class="form-check form-switch ms-4 mb-3">
-              <input class="form-check-input" type="checkbox" id="toggleSentiment">
-              <label class="form-check-label" for="toggleSentiment">
-                Pakai Sentiment
-              </label>
-            </div> -->
 
             <hr />
 
             <!-- Toggle Comment AI -->
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" id="toggleCommentAI">
-              <label class="form-check-label" for="toggleCommentAI">
-                Komen Pakai AI
+              <label class="form-check-label fw-bold" for="toggleCommentAI">
+                Aktifkan Pemrosesan AI
               </label>
+            </div>
+
+            <div class="mb-2 ms-4 text-muted" style="font-size: 11px;">
+              <ul class="mb-0 ps-3">
+                <li><strong>OFF:</strong> Posting data mentah dari file CSV (Random).</li>
+                <li><strong>ON:</strong> Data CSV + Context -> Diproses AI -> Posting.</li>
+              </ul>
             </div>
 
             <!-- AI Mode Selection -->
@@ -244,8 +246,18 @@
             🕰 Timer Settings
           </div>
           <div class="card-body">
-            <label class="form-label">Posting duration (ms):</label>
-            <input id="postingDuration" type="number" class="form-control mb-3" value="3600000" />
+            <label class="form-label">Posting Control:</label>
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="limitByDuration" checked>
+              <label class="form-check-label" for="limitByDuration">
+                Batasi dengan Durasi (Timer)
+              </label>
+            </div>
+
+            <div id="durationInputContainer">
+              <label class="form-label">Posting duration (ms):</label>
+              <input id="postingDuration" type="number" class="form-control mb-3" value="3600000" />
+            </div>
             <label class="form-label">MinDelay per comment (ms):</label>
             <input id="minDelayPerComment" type="number" class="form-control mb-3" value="300000" />
             <label class="form-label">MaxDelay per comment (ms):</label>

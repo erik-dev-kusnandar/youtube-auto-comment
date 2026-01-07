@@ -356,7 +356,8 @@ startBtn.addEventListener("click", async () => {
         mode: document.getElementById("sentimentMode").value
       },
       ai_mode: document.getElementById("aiMode").value
-    }
+    },
+    limitByDuration: document.getElementById("limitByDuration").checked
   };
 
   console.log("Starting posting with payload:", payload);
@@ -720,5 +721,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const aiModeContainer = document.getElementById("aiModeContainer");
   toggleCommentAI.addEventListener("change", () => {
     aiModeContainer.style.display = toggleCommentAI.checked ? "block" : "none";
+  });
+
+  // Toggle Duration Input
+  const limitByDuration = document.getElementById("limitByDuration");
+  const durationInputContainer = document.getElementById("durationInputContainer");
+  limitByDuration.addEventListener("change", () => {
+    if (limitByDuration.checked) {
+      durationInputContainer.style.opacity = "1";
+      document.getElementById("postingDuration").disabled = false;
+    } else {
+      durationInputContainer.style.opacity = "0.5";
+      document.getElementById("postingDuration").disabled = true;
+    }
   });
 });

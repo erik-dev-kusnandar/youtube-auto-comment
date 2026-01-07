@@ -83,7 +83,8 @@ module.exports = (pushLog) => {
       flowConfig: req.body.flowConfig || {},
       runId: req.body.runId || `RUN#${Date.now()}`,
       method: req.body.method,
-      deviceId: req.body.deviceId
+      deviceId: req.body.deviceId,
+      limitByDuration: req.body.limitByDuration
     };
 
     console.log("Start posting with config:", opts);
