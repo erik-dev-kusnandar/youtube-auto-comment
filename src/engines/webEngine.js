@@ -1,4 +1,7 @@
-const puppeteer = require("puppeteer");
+const puppeteer = require("puppeteer-extra");
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+puppeteer.use(StealthPlugin());
+
 const logger = require("../logger");
 const path = require("path");
 const fs = require("fs");
@@ -9,7 +12,7 @@ class WebEngine {
     }
 
     async post(videoId, text, opts = {}) {
-        logger.info(`[WebEngine] Starting web post for ${videoId}`);
+        logger.info(`[WebEngine] Starting web post for ${videoId} with Stealth Mode ON`);
 
         const userDataDir = path.join(process.cwd(), "puppeteer_data");
         const logsDir = path.join(process.cwd(), "logs");
@@ -23,7 +26,6 @@ class WebEngine {
                 args: [
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
-                    "--disable-blink-features=AutomationControlled",
                     "--disable-features=IsolateOrigins,site-per-process",
                     "--window-size=1280,800"
                 ],
@@ -47,10 +49,10 @@ class WebEngine {
                 logger.warn(`[WebEngine] youtube_cookies.json NOT FOUND at ${cookiePath}. Browser will start in Guest mode (Logged out).`);
             }
 
-            // Mask automation
-            await page.evaluateOnNewDocument(() => {
-                Object.defineProperty(navigator, "webdriver", { get: () => false });
-            });
+            // Mask automation handled by Stealth Plugin
+            // await page.evaluateOnNewDocument(() => {
+            //     Object.defineProperty(navigator, "webdriver", { get: () => false });
+            // });
 
             const url = `https://www.youtube.com/watch?v=${videoId}`;
             logger.info(`[WebEngine] Navigating to ${url}`);
@@ -154,9 +156,16 @@ class WebEngine {
 
             // [IMPROVEMENT] Human-like typing with variation
             for (const char of text) {
-                await page.keyboard.sendCharacter(char);
+                if (char === "\n") {
+                    await page.keyboard.press("Enter");
+                } else if (char === "\r") {
+                    continue; // Skip carriage returns
+                } else {
+                    await page.keyboard.sendCharacter(char);
+                }
+                const randomDelay = Math.floor(Math.random() * (300 - 100 + 1) + 100);
                 // Faster typing with occasional mistakes simulation would be here but for now just random delay
-                await new Promise(r => setTimeout(r, 40 + Math.random() * 120));
+                await new Promise(r => setTimeout(r, randomDelay));
 
                 // Random pause
                 if (Math.random() > 0.96) {
@@ -268,8 +277,7 @@ class WebEngine {
                 headless: false,
                 args: [
                     "--no-sandbox",
-                    "--disable-setuid-sandbox",
-                    "--disable-blink-features=AutomationControlled"
+                    "--disable-setuid-sandbox"
                 ],
                 userDataDir
             });

@@ -67,18 +67,20 @@ function getWorkerStateObj(username) {
       startTime: null,
       endTime: null,
       durationMs: 0,
+      limitByDuration: true
     });
   }
   return workerStates.get(username);
 }
 
-function startWorker(username, durationMs) {
+function startWorker(username, durationMs, limitByDuration = true) {
   const state = getWorkerStateObj(username);
   state.running = true;
   state.stopRequested = false;
   state.startTime = Date.now();
   state.endTime = state.startTime + durationMs;
   state.durationMs = durationMs;
+  state.limitByDuration = limitByDuration;
 }
 
 function stopWorker(username) {

@@ -301,12 +301,20 @@ async function pollWorkerStatus() {
     const state = await res.json();
 
     if (state.running) {
-      // 🔒 Lock UI
-      startBtn.disabled = true;
-      stopBtn.disabled = false;
-      statusBox.style.display = "block";
+      const workerStatusDiv = document.getElementById("workerStatus");
+      const countdownLabel = workerStatusDiv.querySelector("br").previousSibling; // Node before <br>
 
-      countdownEl.textContent = formatMs(state.remainingMs);
+      if (state.limitByDuration) {
+        countdownLabel.textContent = "⏳ Auto posting berjalan…";
+        document.getElementById("countdown").parentElement.previousElementSibling.textContent = "Sisa waktu: ";
+        countdownEl.textContent = formatMs(state.remainingMs);
+      } else {
+        countdownLabel.textContent = "📑 Mode: List Video (Sekali Jalan)";
+        document.getElementById("countdown").parentElement.previousElementSibling.textContent = "Status: ";
+        countdownEl.textContent = "Berjalan sampai list habis";
+      }
+
+      statusBox.style.display = "block";
     } else {
       // 🔓 Unlock UI
       startBtn.disabled = false;

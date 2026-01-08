@@ -77,10 +77,11 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
 
   // ✅ [IMPROVEMENT] SHUFFLE VIDEOS
   // Randomizing the order prevents robotic sequential behavior visible in logs.
+  const limitByDuration = opts.limitByDuration !== false; // default true if undefined
   const shuffledVideos = [...videos].sort(() => Math.random() - 0.5);
 
   const endTime = Date.now() + postingDuration;
-  store.startWorker(username, postingDuration);
+  store.startWorker(username, postingDuration, limitByDuration);
 
   pushLog({ type: "info", message: `Worker started (${method.toUpperCase()}) for ${postingDuration} ms` });
   pushLog({
@@ -97,7 +98,7 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
   console.log("DEBUG: fetchVideoMetadata type:", typeof fetchVideoMetadata);
 
   // ✅ CHECK MODE: DURATION VS LIST
-  const limitByDuration = opts.limitByDuration !== false; // default true if undefined
+  // (limitByDuration is already declared above)
 
   if (limitByDuration) {
     pushLog({ type: "config", message: `Stopping by TIMER: ${postingDuration}ms` });
