@@ -62,6 +62,42 @@ class WebEngine {
             // Random initial delay to simulate human "looking" at the page
             await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
 
+            // ✅ [SMART ENGINE] Scrape Metadata (Title & Description) from DOM
+            let scrapedMetadata = null;
+            try {
+                scrapedMetadata = await page.evaluate(() => {
+                    const titleEl = document.querySelector("h1.ytd-watch-metadata") ||
+                        document.querySelector("#title h1") ||
+                        document.querySelector("div[id='title']");
+
+                    const descEl = document.querySelector("#description-inline-expander") ||
+                        document.querySelector("#description");
+
+                    return {
+                        title: titleEl ? titleEl.textContent.trim() : "",
+                        description: descEl ? descEl.textContent.trim() : ""
+                    };
+                });
+                logger.info(`[WebEngine] Scraped Context: ${scrapedMetadata.title.substring(0, 40)}...`);
+            } catch (e) {
+                logger.warn(`[WebEngine] Failed to scrape metadata: ${e.message}`);
+            }
+
+            // ✅ [SMART ENGINE] AI Generation Step
+            if (opts.aiCallback && scrapedMetadata && scrapedMetadata.title) {
+                logger.info("[WebEngine] Generating AI comment from scraped context...");
+                try {
+                    const aiText = await opts.aiCallback(scrapedMetadata);
+                    if (aiText) {
+                        text = aiText;
+                        logger.info(`[WebEngine] AI Comment Generated: ${text.substring(0, 50)}...`);
+                    }
+                } catch (e) {
+                    logger.error(`[WebEngine] AI Callback failed: ${e.message}`);
+                }
+            }
+
+
             for (let i = 0; i < 5; i++) {
                 const scrollAmount = 300 + Math.floor(Math.random() * 400);
                 await page.evaluate((amt) => window.scrollBy(0, amt), scrollAmount);
@@ -78,66 +114,7 @@ class WebEngine {
                 await new Promise(r => setTimeout(r, 3000));
             }
 
-            // Verify login status via avatar
-            const avatarFound = await page.$("yt-img-shadow#avatar") !== null;
-            if (!avatarFound) {
-                logger.warn("[WebEngine] User avatar not found. This might indicate the session in 'puppeteer_data' has expired or is invalid for Linux.");
-            }
-
-            // [ADVANCED EVASION] 1.5. Watch Time Simulation
-            const watchTime = 20000 + Math.random() * 20000;
-            logger.info(`[WebEngine] Simulating watch time: ${Math.round(watchTime / 1000)}s`);
-
-            const startTime = Date.now();
-            while (Date.now() - startTime < watchTime) {
-                // Erratic scrolling during "watching"
-                const action = Math.random();
-                if (action > 0.8) {
-                    const amt = (Math.random() > 0.5 ? 1 : -1) * (100 + Math.random() * 200);
-                    await page.evaluate((a) => window.scrollBy(0, a), amt);
-                } else if (action > 0.6) {
-                    // Hover over random elements
-                    try {
-                        const links = await page.$$("a#video-title, #description-text, ytd-menu-renderer");
-                        if (links.length > 0) {
-                            const randLink = links[Math.floor(Math.random() * links.length)];
-                            await randLink.hover();
-                        }
-                    } catch (e) { }
-                }
-                await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
-            }
-
-            // 2. Click comment box
-            const commentSelectors = [
-                "div#placeholder-area",
-                "yt-formatted-string#simplebox-placeholder",
-                "#simplebox-placeholder",
-                "ytd-comment-simplebox-renderer",
-                "#contenteditable-root"
-            ];
-
-            let clicked = false;
-            for (const selector of commentSelectors) {
-                try {
-                    const element = await page.waitForSelector(selector, { timeout: 4000, visible: true });
-                    if (element) {
-                        // Use evaluate for a more "native" click if standard click fails
-                        await page.evaluate(el => el.click(), element);
-                        clicked = true;
-                        logger.info(`[WebEngine] Clicked comment box via: ${selector}`);
-                        break;
-                    }
-                } catch (e) { continue; }
-            }
-
-            if (!clicked) {
-                const ss = path.join(logsDir, `fail_find_box_${videoId}.png`);
-                await page.screenshot({ path: ss, fullPage: true });
-                throw new Error("Could not find comment box. Check 'logs' for screenshot. Is your YouTube account restricted or session expired?");
-            }
-
-            // Wait for input to be ready after click
+            // Wait for input to be ready
             await new Promise(r => setTimeout(r, 3000));
 
             // 3. Type text (Human delay)

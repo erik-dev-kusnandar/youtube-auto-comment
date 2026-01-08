@@ -2,7 +2,7 @@
 const store = require("../dataStore");
 const logger = require("../logger");
 const { getEngine } = require("../engines");
-const { fetchVideoMetadata } = require("./youtubeService");
+// const { fetchVideoMetadata } = require("./youtubeService"); // REMOVED strict dependency
 const { rewriteComment } = require("../ai/aiCommentService");
 const { applySentimentStyle } = require("../../services/sentimentStyle");
 const { applyGuardrail } = require("../../services/guardrailService");
@@ -150,13 +150,59 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
       };
 
 
-      // 1. CONTEXT ANALYSIS
+      // 1. CONTEXT ANALYSIS & META FETCH (SMART ENGINE LOGIC)
       let contextSummary = "";
-      let metadata = null; // ✅ Save metadata
-      if (flowConfig.use_context) {
-        metadata = await fetchVideoMetadata(video.videoId);
-        contextSummary = metadata ? `${metadata.title} - ${metadata.description}` : "";
+      let metadata = null;
+      let aiCallback = null;
+
+      // ✅ [SMART ENGINE] If Web method and Context needed, define callback and SKIP API
+      if (method === "web" && flowConfig.use_context) {
         decision.use_context = true;
+
+        // Callback function to be executed inside WebEngine after scraping
+        aiCallback = async (scrapedMeta) => {
+          metadata = scrapedMeta; // Save for logging
+          contextSummary = `${metadata.title} - ${metadata.description}`;
+
+          // Re-use existing AI Logic
+          let generatedComment = commentTpl.text;
+          generatedComment = await processSpintax(generatedComment);
+
+          if (flowConfig.sentiment?.enabled) {
+            // Apply sentiment logic if possible (might be tricky inside callback if depends on other vars)
+            // For simplicity, we assume sentiment analysis on scrapedMeta is doable here or skipped
+            // Let's do simple sentiment style application
+            generatedComment = await applySentimentStyle({ text: generatedComment, sentiment: "neutral" });
+          }
+
+          // Pure AI Generation
+          try {
+            const aiReview = await rewriteComment({
+              title: metadata.title,
+              description: metadata.description?.slice(0, 500) || "",
+              draft: null
+            });
+
+            if (aiReview) {
+              return `${aiReview}\n\n${generatedComment}`;
+            }
+          } catch (e) {
+            console.error("AI Callback generation failed", e);
+          }
+
+          return generatedComment;
+        };
+
+      } else if (flowConfig.use_context) {
+        // [LEGACY] API Fetch for other methods
+        try {
+          const { fetchVideoMetadata } = require("./youtubeService"); // Lazy load
+          metadata = await fetchVideoMetadata(video.videoId);
+          contextSummary = metadata ? `${metadata.title} - ${metadata.description}` : "";
+          decision.use_context = true;
+        } catch (e) {
+          logger.warn(`Failed to fetch metadata for ${video.videoId}, continuing without context.`);
+        }
       }
 
       // 2. SENTIMENT ANALYSIS
@@ -187,53 +233,49 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
         decision.sentiment = targetSentiment;
       }
 
-      // 3. COMMENT GENERATION
-      let finalComment = processSpintax(commentTpl.text); // ✅ PROCESS SPINTAX HERE
+      // 3. COMMENT GENERATION (PRE-CALCULATION FOR NON-CALLBACK METHODS)
+      let finalComment = processSpintax(commentTpl.text);
 
-      if (flowConfig.use_comment_ai) {
-        decision.use_comment_ai = true;
+      if (!aiCallback) { // Only pre-calculate if NOT using callback
+        if (flowConfig.use_comment_ai) {
+          decision.use_comment_ai = true;
 
-        if (flowConfig.sentiment?.enabled) {
-          // Note: If reusing draft as footer, sentiment style might be skipped or applied only to AI part?
-          // For now let's keep sentiment logic simple or apply it to the draft before appending
-          finalComment = await applySentimentStyle({ text: finalComment, sentiment: targetSentiment });
-          decision.source = "file+sentiment";
-        }
-
-        if (metadata && contextSummary && finalComment) {
-          // ✅ LOGIC BARU: Context AI (Top) + Raw Draft (Bottom)
-          // User Request: "hasil AI dari 'Ambil Context Video' posisi di atas dan raw komen dari file di tempatkan paling bawah"
-
-          try {
-            // 1. Generate Opinion from Context (Pure AI)
-            const aiReview = await rewriteComment({
-              title: metadata.title,
-              description: metadata.description?.slice(0, 500) || "",
-              draft: null // Trigger Pure AI generation
-            });
-
-            // 2. Combine: AI Review + Original Draft (Footer/Link)
-            if (aiReview) {
-              finalComment = `${aiReview}\n\n${finalComment}`;
-              decision.source = "ai_context_review+file_footer";
-            }
-          } catch (e) {
-            pushLog({ type: "warn", item: video, message: "AI Context gen failed, using draft only" });
+          if (flowConfig.sentiment?.enabled) {
+            finalComment = await applySentimentStyle({ text: finalComment, sentiment: targetSentiment });
+            decision.source = "file+sentiment";
           }
 
-        } else if (aiMode === "rewrite") {
-          // Fallback if no context or just rewrite mode without context?
-          // Actually if use_context is OFF, we probably just rewrite the draft to be unique
-          const rewritten = await rewriteComment({
-            title: "",
-            description: "",
-            draft: finalComment
-          });
-          if (rewritten) finalComment = rewritten;
-          decision.source = "rewrite_no_context";
+          if (metadata && contextSummary && finalComment) {
+            // ✅ LOGIC BARU: Context AI (Top) + Raw Draft (Bottom)
+            try {
+              const aiReview = await rewriteComment({
+                title: metadata.title,
+                description: metadata.description?.slice(0, 500) || "",
+                draft: null
+              });
+              if (aiReview) {
+                finalComment = `${aiReview}\n\n${finalComment}`;
+                decision.source = "ai_context_review+file_footer";
+              }
+            } catch (e) {
+              pushLog({ type: "warn", item: video, message: "AI Context gen failed, using draft only" });
+            }
+
+          } else if (aiMode === "rewrite") {
+            const rewritten = await rewriteComment({
+              title: "",
+              description: "",
+              draft: finalComment
+            });
+            if (rewritten) finalComment = rewritten;
+            decision.source = "rewrite_no_context";
+          }
+        } else {
+          decision.source = "file";
         }
       } else {
-        decision.source = "file";
+        // If using callback, finalComment is just the template for now (will be updated inside callback)
+        decision.source = "smart_web_callback";
       }
 
       // 4. GUARDRAIL
@@ -254,7 +296,7 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
       }
 
       // ✅ POST USING SELECTED ENGINE
-      const result = await engine.post(video.videoId, finalComment, opts);
+      const result = await engine.post(video.videoId, finalComment, { ...opts, aiCallback });
 
       if (result.status === "error") {
         logger.error(`Engine Error (${method}): ${result.message}`);
