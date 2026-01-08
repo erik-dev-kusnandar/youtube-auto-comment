@@ -119,20 +119,51 @@ class WebEngine {
             // Wait for input to be ready
             await new Promise(r => setTimeout(r, 3000));
 
+            // 2. Click comment box placeholder to reveal real input
+            logger.info("[WebEngine] Clicking comment placeholder...");
+            const placeholderSelectors = [
+                "ytd-comment-simplebox-renderer",
+                "#simplebox-placeholder",
+                "yt-formatted-string#simplebox-placeholder",
+                "#placeholder-area"
+            ];
+
+            let clickedPlaceholder = false;
+            for (const sel of placeholderSelectors) {
+                try {
+                    const placeholder = await page.waitForSelector(sel, { timeout: 5000, visible: true });
+                    if (placeholder) {
+                        await placeholder.click();
+                        clickedPlaceholder = true;
+                        logger.info(`[WebEngine] Clicked placeholder via: ${sel}`);
+                        break;
+                    }
+                } catch (e) { continue; }
+            }
+
+            if (!clickedPlaceholder) {
+                logger.warn("[WebEngine] Could not click placeholder, attempting direct search for input area.");
+            }
+
+            // Wait for real input to be ready after click
+            await new Promise(r => setTimeout(r, 2000));
+
             // 3. Type text (Human delay)
             logger.info("[WebEngine] Typing comment...");
             const inputSelectors = [
                 "#contenteditable-root",
                 "div#contenteditable-root[contenteditable='true']",
                 "[aria-label='Add a comment...']",
-                "#contenteditable-textarea"
+                "[aria-label='Tambahkan komentar...']",
+                "#contenteditable-textarea",
+                "ytd-commentbox #contenteditable-root"
             ];
 
             let inputElement = null;
             let usedSelector = "";
             for (const sel of inputSelectors) {
                 try {
-                    inputElement = await page.waitForSelector(sel, { timeout: 4000, visible: true });
+                    inputElement = await page.waitForSelector(sel, { timeout: 5000, visible: true });
                     if (inputElement) {
                         usedSelector = sel;
                         logger.info(`[WebEngine] Found input element via: ${sel}`);
@@ -149,7 +180,7 @@ class WebEngine {
 
             await inputElement.focus();
 
-            // Clear
+            // Clear (sometimes needed)
             await page.evaluate((el) => {
                 if (el) el.textContent = "";
             }, inputElement);
@@ -163,17 +194,18 @@ class WebEngine {
                 } else {
                     await page.keyboard.sendCharacter(char);
                 }
-                const randomDelay = Math.floor(Math.random() * (300 - 100 + 1) + 100);
-                // Faster typing with occasional mistakes simulation would be here but for now just random delay
-                await new Promise(r => setTimeout(r, randomDelay));
 
-                // Random pause
-                if (Math.random() > 0.96) {
-                    await new Promise(r => setTimeout(r, 800 + Math.random() * 1500));
+                // Variasi delay antar karakter: 40ms - 150ms
+                const charDelay = 40 + Math.random() * 110;
+                await new Promise(r => setTimeout(r, charDelay));
+
+                // Random pause (human-like)
+                if (Math.random() > 0.97) {
+                    await new Promise(r => setTimeout(r, 800 + Math.random() * 1200));
                 }
             }
             // Delay before clicking submit button
-            await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
+            await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
 
             // 4. Submit
             logger.info("[WebEngine] Finding submit button...");
@@ -181,13 +213,15 @@ class WebEngine {
                 "ytd-button-renderer#submit-button",
                 "#submit-button ytd-button-renderer",
                 "#submit-button button[aria-label='Comment']",
-                "#submit-button"
+                "#submit-button button[aria-label='Komentar']",
+                "#submit-button button",
+                "ytd-button-renderer.ytd-commentbox#submit-button"
             ];
 
             let submitted = false;
             for (const sel of submitBtnSelectors) {
                 try {
-                    const btn = await page.$(sel);
+                    const btn = await page.waitForSelector(sel, { timeout: 3000, visible: true });
                     if (btn) {
                         const isEnabled = await page.evaluate(el => {
                             const b = el.querySelector('button') || el;
@@ -199,6 +233,8 @@ class WebEngine {
                             submitted = true;
                             logger.info(`[WebEngine] Submitted via: ${sel}`);
                             break;
+                        } else {
+                            logger.warn(`[WebEngine] Submit button found via ${sel} but it is DISABLED.`);
                         }
                     }
                 } catch (e) { continue; }
