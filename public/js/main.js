@@ -365,7 +365,9 @@ startBtn.addEventListener("click", async () => {
       },
       ai_mode: document.getElementById("aiMode").value
     },
-    limitByDuration: document.getElementById("limitByDuration").checked
+    limitByDuration: document.getElementById("limitByDuration").checked,
+    headless: document.getElementById("headlessMode").checked,
+    browserPath: document.getElementById("browserPath").value
   };
 
   console.log("Starting posting with payload:", payload);
@@ -652,8 +654,13 @@ postingMethod.addEventListener("change", () => {
 openWebLoginBtn.addEventListener("click", async () => {
   openWebLoginBtn.disabled = true;
   openWebLoginBtn.textContent = "⌛ Opening Browser...";
+  const browserPath = document.getElementById("browserPath").value;
   try {
-    const res = await fetch("/web/setup-login", { method: "POST" });
+    const res = await fetch("/web/setup-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ browserPath })
+    });
     const json = await res.json();
     if (json.ok) {
       showToast("Browser opened! Please login to YouTube.", "success");

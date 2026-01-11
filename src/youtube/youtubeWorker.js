@@ -195,15 +195,9 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
         };
 
       } else if (flowConfig.use_context) {
-        // [LEGACY] API Fetch for other methods
-        try {
-          const { fetchVideoMetadata } = require("./youtubeService"); // Lazy load
-          metadata = await fetchVideoMetadata(video.videoId);
-          contextSummary = metadata ? `${metadata.title} - ${metadata.description}` : "";
-          decision.use_context = true;
-        } catch (e) {
-          logger.warn(`Failed to fetch metadata for ${video.videoId}, continuing without context.`);
-        }
+        // [REMOVED] API Fetch logic
+        logger.warn(`Context is enabled but method is ${method}. Metadata fetching is only supported in 'web' method via smart scraping.`);
+        decision.use_context = false; // Disable if not web method
       }
 
       // 2. SENTIMENT ANALYSIS

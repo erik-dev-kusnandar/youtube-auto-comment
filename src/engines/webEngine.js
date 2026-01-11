@@ -19,17 +19,31 @@ class WebEngine {
         if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 
         let browser;
-
         try {
+            // ✅ PATH SANITIZATION & VALIDATION
+            if (opts.browserPath) {
+                opts.browserPath = opts.browserPath.trim().replace(/^["'](.+)["']$/, '$1');
+                if (!fs.existsSync(opts.browserPath)) {
+                    throw new Error(`Browser executable not found at: ${opts.browserPath}`);
+                }
+            }
+
             browser = await puppeteer.launch({
-                headless: opts.headless !== undefined ? opts.headless : "new",
+                executablePath: opts.browserPath || undefined,
+                headless: opts.headless,
                 args: [
                     "--no-sandbox",
                     "--disable-setuid-sandbox",
                     "--disable-features=IsolateOrigins,site-per-process",
-                    "--window-size=1280,800"
+                    "--window-size=1280,800",
+                    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-infobars",
+                    "--allow-running-insecure-content",
+                    "--disable-web-security"
                 ],
-                userDataDir
+                userDataDir,
+                ignoreDefaultArgs: ["--enable-automation"]
             });
 
             const page = await browser.newPage();
@@ -267,46 +281,69 @@ class WebEngine {
         }
     }
 
-    async setupLogin() {
-        logger.info("[WebEngine] Opening browser for manual login...");
+    async setupLogin(browserPath) {
+        logger.info(`[WebEngine] Attempting to open browser for setup. Path: ${browserPath || "Default"}`);
         const userDataDir = path.join(process.cwd(), "puppeteer_data");
         if (!fs.existsSync(userDataDir)) fs.mkdirSync(userDataDir, { recursive: true });
 
+        // ✅ PATH SANITIZATION & VALIDATION
+        if (browserPath) {
+            browserPath = browserPath.trim().replace(/^["'](.+)["']$/, '$1');
+            if (!fs.existsSync(browserPath)) {
+                const err = `Browser executable NOT FOUND at: ${browserPath}.`;
+                logger.error(`[WebEngine] ${err}`);
+                throw new Error(err);
+            }
+        }
+
+        let browser;
         try {
-            const browser = await puppeteer.launch({
+            browser = await puppeteer.launch({
+                executablePath: browserPath || undefined,
                 headless: false,
                 args: [
                     "--no-sandbox",
-                    "--disable-setuid-sandbox"
+                    "--disable-setuid-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-infobars",
+                    "--disable-features=IsolateOrigins,site-per-process",
+                    "--window-size=1280,800",
+                    "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 ],
-                userDataDir
+                userDataDir,
+                ignoreDefaultArgs: ["--enable-automation"]
             });
+            logger.info("[WebEngine] Browser opened successfully for setup.");
+        } catch (e) {
+            const msg = `Failed to launch browser: ${e.message}`;
+            logger.error(`[WebEngine] ${msg}`);
+            throw new Error(msg);
+        }
 
+        try {
             const page = await browser.newPage();
             await page.setViewport({ width: 1280, height: 800 });
             await page.goto("https://www.youtube.com", { waitUntil: "networkidle2" });
 
-            // 🍪 Periodic Save (Every 5s) because 'disconnected' event is too late to fetch cookies
+            // 🍪 Periodic Save (Every 5s)
             const saveInterval = setInterval(async () => {
                 try {
                     const cookies = await page.cookies();
                     const dataDir = path.join(process.cwd(), "data");
                     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
                     fs.writeFileSync(path.join(dataDir, "youtube_cookies.json"), JSON.stringify(cookies, null, 2));
-                } catch (e) {
-                    // Silently fail if page is closing/closed
-                }
+                } catch (e) { }
             }, 5000);
 
             return new Promise((resolve) => {
                 browser.on("disconnected", () => {
                     clearInterval(saveInterval);
-                    logger.info("[WebEngine] Browser closed by user.");
+                    logger.info("[WebEngine] Setup browser closed by user.");
                     resolve({ ok: true });
                 });
             });
         } catch (e) {
-            logger.error(`[WebEngine] Setup login failed: ${e.message}`);
+            if (browser) await browser.close();
             throw e;
         }
     }

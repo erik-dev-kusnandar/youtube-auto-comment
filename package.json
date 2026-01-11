@@ -5,7 +5,6 @@
   "license": "MIT",
   "scripts": {
     "start": "nodemon src/app.js",
-    "auth": "nodemon src/auth.js",
     "dev": "nodemon src/app.js"
   },
   "nodemonConfig": {
@@ -26,7 +25,6 @@
     "dotenv": "^16.6.1",
     "express": "^4.22.1",
     "express-session": "^1.18.2",
-    "googleapis": "^132.0.0",
     "multer": "^1.4.5-lts.2",
     "openai": "^6.10.0",
     "papaparse": "^5.5.3",

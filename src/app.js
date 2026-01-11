@@ -6,7 +6,6 @@ const cors = require("cors");
 const logger = require("./logger");
 
 const youtubeRoutesFactory = require("./youtube/youtubeRoutes");
-const youtubeAuth = require("./auth/youtubeAuth");
 const uploadSentiment = require("../routes/uploadSentiment");
 const sentimentRoutes = require("../routes/uploadSentiment");
 
@@ -130,9 +129,6 @@ function pushLog(payload) {
   // Cleanup dead clients
   deadClients.forEach(id => sseClients.delete(id));
 }
-
-// mount auth routes
-app.use("/", youtubeAuth);
 
 // mount youtube routes and pass pushLog
 app.use("/", youtubeRoutesFactory(pushLog));

@@ -4,8 +4,8 @@ const uploadRouter = require("./youtubeUpload");
 const uploadSensitiveRouter = require("../../routes/uploadSensitive");
 const store = require("../dataStore");
 const { startYoutubeWorker } = require("./youtubeWorker");
-const { fetchVideoMetadata } = require("./youtubeService");
-const { buildCommentFromMetadata } = require("./metadataHelper");
+// const { fetchVideoMetadata } = require("./youtubeService"); // REMOVED
+// const { buildCommentFromMetadata } = require("./metadataHelper"); // REMOVED
 const { rewriteComment } = require("../ai/aiCommentService");
 const defaultConfig = require("../../config/loadConfig");
 const { applySentimentStyle } = require("../../services/sentimentStyle");
@@ -30,12 +30,19 @@ module.exports = (pushLog) => {
   // Web Browser Setup Login
   router.post("/web/setup-login", async (req, res) => {
     try {
-      // Run in background but handle errors
-      webEngine.setupLogin().catch(e => {
+      const { browserPath } = req.body;
+
+      // We don't await the whole session, but we await the launch part
+      // to catch immediate errors like "File not found"
+      webEngine.setupLogin(browserPath).catch(e => {
         console.error("Setup login browser error:", e.message);
+        // This won't reach the original 'res' if already sent, 
+        // but it helps if we handle it before res.json
       });
-      res.json({ ok: true, message: "Browser opening..." });
+
+      res.json({ ok: true, message: "Browser opening... Check your taskbar." });
     } catch (e) {
+      console.error("Setup route error:", e.message);
       res.status(500).json({ ok: false, message: e.message });
     }
   });
@@ -84,7 +91,8 @@ module.exports = (pushLog) => {
       runId: req.body.runId || `RUN#${Date.now()}`,
       method: req.body.method,
       deviceId: req.body.deviceId,
-      limitByDuration: req.body.limitByDuration
+      limitByDuration: req.body.limitByDuration,
+      browserPath: req.body.browserPath
     };
 
     console.log("Start posting with config:", opts);
@@ -248,9 +256,10 @@ module.exports = (pushLog) => {
 
         // ===== TOGGLE A: CONTEXT =====
         if (decision.use_context) {
-          meta = await fetchVideoMetadata(video.videoId);
-          finalComment = buildCommentFromMetadata(meta, tpl);
-          decision.source += "+context";
+          // [REMOVED] Live metadata fetch from API
+          meta = { title: "Video Title Preview", description: "Video Description Preview" };
+          finalComment = tpl.replace(/{title}/gi, meta.title).replace(/{desc}/gi, meta.description);
+          decision.source += "+preview-context";
         } else {
           finalComment = tpl;
           decision.source = "file";

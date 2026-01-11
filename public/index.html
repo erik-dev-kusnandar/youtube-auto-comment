@@ -43,8 +43,7 @@
           </div>
           <div class="card-body">
             <select id="postingMethod" class="form-select form-select-sm">
-              <option value="web">Web Browser (Web-Headless)</option>
-              <option value="api">Youtube API (Fast, but risk of review)</option>
+              <option value="web">Web Browser (Puppeteer)</option>
               <option value="appium">Mobile App (Appium - Human-like)</option>
             </select>
           </div>
@@ -72,8 +71,21 @@
             <span>🌐 Web Browser Setup</span>
           </div>
           <div class="card-body">
-            <p class="small text-muted mb-2">You must login to YouTube manually once before posting.</p>
-            <button id="openWebLoginBtn" class="btn btn-outline-info btn-sm w-100">🔓 Open Browser (Setup
+            <p class="small text-muted mb-2">
+              You must login to YouTube manually once before posting.
+              <br><i>Note: The app uses an isolated browser profile to avoid interfering with your main browser.</i>
+            </p>
+
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Browser Path (Optional)</label>
+              <input type="text" id="browserPath" class="form-control form-control-sm"
+                placeholder="e.g. C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe">
+              <div class="form-text" style="font-size: 10px;">
+                Leave empty for default Chromium. Use this if you want to use Brave or custom Chrome.
+              </div>
+            </div>
+
+            <button id="openWebLoginBtn" class="btn btn-outline-info btn-sm w-100 mb-2">🔓 Open Browser (Setup
               Login)</button>
           </div>
         </div>
