@@ -12,6 +12,7 @@ const logger = require("../logger");
 const path = require("path");
 const fs = require("fs");
 const { log } = require("console");
+const nutHelper = require("../utils/nutHelper");
 
 class WebEngine {
     constructor() {
@@ -75,7 +76,7 @@ class WebEngine {
 
             browser = await puppeteer.launch({
                 executablePath: opts.browserPath || undefined,
-                headless: opts.headless !== false,
+                headless: false, // nut.js requires a visible window
                 args: this.getStealthArgs(),
                 userDataDir,
                 ignoreDefaultArgs: ["--enable-automation"],
@@ -154,9 +155,12 @@ class WebEngine {
                 if (!searchBox) {
                     logger.warn("[WARMING] ⚠️ Could not find search box, skipping search step");
                 } else {
-                    await searchBox.click();
+                    logger.info("[WARMING] 🖱️ Moving mouse to search box via nut.js...");
+                    await nutHelper.moveAndClick(page, 'input#search');
                     await new Promise(r => setTimeout(r, 500));
-                    await page.keyboard.type(randomSearch, { delay: 100 + Math.random() * 100 });
+
+                    logger.info("[WARMING] ⌨️ Typing search query via nut.js...");
+                    await nutHelper.type(randomSearch);
                     await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
                     await page.keyboard.press('Enter');
 
@@ -447,7 +451,11 @@ class WebEngine {
                         }, likeBtn);
 
                         if (!isAlreadyLiked) {
-                            await likeBtn.click();
+                            logger.info(`[WARMING] 🖱️ Liking video via nut.js: ${sel}`);
+                            const likeClickedByNut = await nutHelper.moveAndClick(page, sel);
+                            if (!likeClickedByNut) {
+                                await likeBtn.click();
+                            }
                             await new Promise(r => setTimeout(r, 1000 + Math.random() * 2000));
                             activityScore += 15;
                             logger.info(`[WARMING] ✅ Liked video ${i + 1} (+15 score)`);
@@ -519,7 +527,11 @@ class WebEngine {
                         }, subBtn);
 
                         if (!isSubscribed) {
-                            await subBtn.click();
+                            logger.info("[WARMING] 🖱️ Subscribing via nut.js...");
+                            const subClickedByNut = await nutHelper.moveAndClick(page, sel);
+                            if (!subClickedByNut) {
+                                await subBtn.click();
+                            }
                             await new Promise(r => setTimeout(r, 1000));
                             activityScore += 25;
                             logger.info("[WARMING] ✅ Subscribed to channel (+25 score)");
@@ -624,6 +636,51 @@ class WebEngine {
         });
     }
 
+    /**
+     * ✅ AD SKIPPING LOGIC
+     */
+    async handleAds(page) {
+        try {
+            const adSelectors = [
+                ".ytp-ad-skip-button",
+                ".ytp-ad-skip-button-modern",
+                ".ytp-skip-ad-button",
+                ".videoAdUiSkipButton",
+                "button.ytp-ad-skip-button-slot"
+            ];
+
+            let adFound = false;
+            for (const sel of adSelectors) {
+                const btn = await page.$(sel);
+                if (btn) {
+                    const isVisible = await page.evaluate(el => {
+                        const style = window.getComputedStyle(el);
+                        return style && style.display !== 'none' && style.visibility !== 'hidden' && el.offsetWidth > 0;
+                    }, btn);
+
+                    if (isVisible) {
+                        logger.info(`[WebEngine] 📺 Ad detected! Skipping via nut.js...`);
+                        await nutHelper.moveAndClick(page, btn);
+                        adFound = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!adFound) {
+                // Check if there is an unskippable ad overlay
+                const adOverlay = await page.$(".ytp-ad-player-overlay, .ytp-ad-visit-advertiser-button");
+                if (adOverlay) {
+                    logger.info("[WebEngine] 📺 Unskippable ad playing... waiting...");
+                }
+            }
+
+            return adFound;
+        } catch (e) {
+            return false;
+        }
+    }
+
     async post(videoId, text, opts = {}) {
         // ✅ CHECK IF WARMING IS NEEDED
         const accountId = opts.accountId || 'default';
@@ -653,7 +710,7 @@ class WebEngine {
 
             browser = await puppeteer.launch({
                 executablePath: opts.browserPath || undefined,
-                headless: opts.headless !== false,
+                headless: false, // nut.js requires a visible window
                 args: this.getStealthArgs(),
                 userDataDir,
                 ignoreDefaultArgs: ["--enable-automation"],
@@ -713,6 +770,13 @@ class WebEngine {
                 waitUntil: "networkidle2",
                 timeout: 90000
             });
+
+            // ✅ HANDLE INITIAL ADS
+            await this.handleAds(page);
+
+            // Wait and check again for secondary ads
+            await new Promise(r => setTimeout(r, 5000));
+            await this.handleAds(page);
 
             const currentUrl = page.url();
             if (currentUrl.includes('accounts.google.com') || currentUrl.includes('signin')) {
@@ -871,36 +935,41 @@ class WebEngine {
                 throw new Error("Could not find comment input box");
             }
 
-            logger.info("[WebEngine] ⌨️ Typing comment...");
-            await inputElement.focus();
+            // Bring window to front
+            await page.bringToFront();
+
+            logger.info("[WebEngine] 🖱️ Moving mouse to comment box via nut.js...");
+            const clicked = await nutHelper.moveAndClick(page, usedSelector);
+
+            if (!clicked) {
+                logger.warn("[WebEngine] nut.js click failed, falling back to Puppeteer click");
+                await inputElement.click();
+            }
+
+            await new Promise(r => setTimeout(r, 1000));
+
+            logger.info("[WebEngine] ⌨️ Typing comment via nut.js...");
+            // Clear any existing text (still using Puppeteer for this as it's cleaner)
+            await page.evaluate((el) => { if (el) el.textContent = ""; }, inputElement);
             await new Promise(r => setTimeout(r, 500));
 
-            // Clear any existing text
-            await page.evaluate((el) => { if (el) el.textContent = ""; }, inputElement);
-            await new Promise(r => setTimeout(r, 300));
-
-            // Type comment with human-like delays
-            for (const char of text) {
-                if (char === "\n") {
-                    await page.keyboard.press("Enter");
-                } else if (char !== "\r") {
-                    await page.keyboard.sendCharacter(char);
-                }
-                await new Promise(r => setTimeout(r, Math.floor(Math.random() * 200 + 100)));
-
-                if (Math.random() > 0.96) {
-                    await new Promise(r => setTimeout(r, 800 + Math.random() * 1500));
-                }
-            }
+            await nutHelper.type(text);
 
             logger.info("[WebEngine] ✅ Comment typed successfully");
             await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
 
             // Submit
             logger.info("[WebEngine] Submitting...");
+
+            // Wait brief moment for button to enable after typing
+            await new Promise(r => setTimeout(r, 1500));
+
             const submitBtnSelectors = [
-                "ytd-button-renderer#submit-button",
-                "#submit-button button[aria-label='Comment']"
+                "button[aria-label='Comment']",
+                "ytd-button-renderer#submit-button button",
+                "#submit-button button[aria-label='Comment']",
+                ".yt-spec-button-shape-next--call-to-action",
+                "ytd-button-renderer#submit-button"
             ];
 
             let submitted = false;
@@ -909,12 +978,19 @@ class WebEngine {
                     const btn = await page.$(sel);
                     if (btn) {
                         const isEnabled = await page.evaluate(el => {
-                            const b = el.querySelector('button') || el;
-                            return b && !b.hasAttribute('disabled');
+                            const b = el.tagName === 'BUTTON' ? el : el.querySelector('button');
+                            if (!b) return false;
+                            const disabled = b.hasAttribute('disabled') || b.getAttribute('aria-disabled') === 'true';
+                            return !disabled;
                         }, btn);
 
                         if (isEnabled) {
-                            await btn.click();
+                            logger.info(`[WebEngine] 🖱️ Clicking submit button via nut.js: ${sel}`);
+                            // Pass the actual element handle to avoid re-searching in nutHelper
+                            const submitClicked = await nutHelper.moveAndClick(page, btn);
+                            if (!submitClicked) {
+                                await btn.click();
+                            }
                             submitted = true;
                             break;
                         }
