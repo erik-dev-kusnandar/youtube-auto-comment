@@ -4,26 +4,28 @@ const uploadRouter = require("./youtubeUpload");
 const uploadSensitiveRouter = require("../../routes/uploadSensitive");
 const store = require("../dataStore");
 const { startYoutubeWorker } = require("./youtubeWorker");
-// const { fetchVideoMetadata } = require("./youtubeService"); // REMOVED
-// const { buildCommentFromMetadata } = require("./metadataHelper"); // REMOVED
 const { rewriteComment } = require("../ai/aiCommentService");
 const defaultConfig = require("../../config/loadConfig");
 const { applySentimentStyle } = require("../../services/sentimentStyle");
 const { applyGuardrail } = require("../../services/guardrailService");
 const { classifySentiment, pickRandomSentiment } = require("../../services/sentimentService");
 const uploadSentimentRouter = require("../../routes/uploadSentiment");
+const logger = require("../logger"); // ✅ ADD THIS LINE
 
+// Comment flow config
 let commentFlowConfig = {
   use_context: false,
   use_comment_ai: false
 };
 
-
+// Flow config
 const flowConfig = commentFlowConfig;
 
+// Appium and Web engines
 const appiumEngine = require("../engines/appiumEngine");
 const webEngine = require("../engines/webEngine");
 
+// Export router
 module.exports = (pushLog) => {
   const router = express.Router();
 
@@ -54,18 +56,19 @@ module.exports = (pushLog) => {
     res.json({ ok });
   });
 
-  // mount upload router at /upload
+  // Mount upload router at /upload
   router.use("/upload", uploadRouter);
   router.use("/upload", uploadSensitiveRouter);
   router.use("/upload", uploadSentimentRouter);
 
-  // progress endpoint
+  // Get progress endpoint
   router.get("/progress", (req, res) => {
     const username = req.session.username;
     if (!username) return res.json({ videos: [], comments: [], postingLogs: [] });
     res.json(store.getAll(username));
   });
 
+  // Update comment flow settings
   router.post("/settings/comment-flow", (req, res) => {
     commentFlowConfig = {
       ...commentFlowConfig,
@@ -77,8 +80,14 @@ module.exports = (pushLog) => {
     res.json({ ok: true, config: commentFlowConfig });
   });
 
+  // Get posting status
+  router.get("/status", (req, res) => {
+    const username = req.session.username;
+    if (!username) return res.json({ running: false });
+    res.json(store.getWorkerState(username));
+  });
 
-  // start worker with optional query params
+  // Start posting
   router.post("/start", (req, res) => {
     const username = req.session.username;
     if (!username) return res.status(401).json({ error: "Unauthorized" });
@@ -92,6 +101,7 @@ module.exports = (pushLog) => {
       method: req.body.method,
       deviceId: req.body.deviceId,
       limitByDuration: req.body.limitByDuration,
+      headless: req.body.headless,
       browserPath: req.body.browserPath
     };
 
@@ -106,12 +116,7 @@ module.exports = (pushLog) => {
 
   });
 
-  router.get("/status", (req, res) => {
-    const username = req.session.username;
-    if (!username) return res.json({ running: false });
-    res.json(store.getWorkerState(username));
-  });
-
+  // Stop posting immediately
   router.post("/stop", (req, res) => {
     const username = req.session.username;
     if (username) {
@@ -121,6 +126,8 @@ module.exports = (pushLog) => {
     res.json({ ok: true });
   });
 
+  // Dry run
+  // simulate posting without actually posting
   router.post("/dry-run", async (req, res) => {
     try {
       const username = req.session.username;
@@ -372,6 +379,120 @@ module.exports = (pushLog) => {
     } catch (err) {
       console.error("Dry-run error:", err.message);
       res.status(500).json({ ok: false, error: err.message });
+    }
+  });
+
+  // Warming routes (if not imported)
+  router.post("/warm-account", async (req, res) => {
+    const username = req.session.username;
+    if (!username) {
+      return res.status(401).json({
+        ok: false,
+        error: "Unauthorized"
+      });
+    }
+
+    const { browserPath, headless, accountId } = req.body;
+
+    try {
+      console.log(`[WARMING] Starting for user: ${username}`); // ✅ Use console.log instead
+
+      // Push warming start log to SSE
+      pushLog({
+        type: "warming",
+        runId: `WARM-${Date.now()}`,
+        message: "🔥 Starting account warming routine..."
+      });
+
+      // Dynamic import webEngine
+      const webEngine = require("../engines/webEngine");
+
+      const result = await webEngine.warmAccount({
+        browserPath: browserPath || undefined,
+        headless: headless !== false,
+        accountId: accountId || username
+      });
+
+      if (result.success) {
+        console.log(`[WARMING] Success! Score: ${result.activityScore}`);
+
+        pushLog({
+          type: "warming",
+          runId: `WARM-${Date.now()}`,
+          message: `✅ Warming complete! Activity Score: ${result.activityScore}/100`
+        });
+
+        res.json({
+          ok: true,
+          message: result.message,
+          activityScore: result.activityScore
+        });
+      } else {
+        console.error(`[WARMING] Failed: ${result.message}`);
+
+        pushLog({
+          type: "error",
+          runId: `WARM-${Date.now()}`,
+          message: `❌ Warming failed: ${result.message}`
+        });
+
+        res.status(500).json({
+          ok: false,
+          message: result.message
+        });
+      }
+    } catch (e) {
+      console.error(`[WARMING] Error: ${e.message}`);
+
+      pushLog({
+        type: "error",
+        runId: `WARM-${Date.now()}`,
+        message: `❌ Warming error: ${e.message}`
+      });
+
+      res.status(500).json({
+        ok: false,
+        message: e.message
+      });
+    }
+  });
+
+  // Warming status
+  router.get("/warming-status", async (req, res) => {
+    const username = req.session.username;
+    if (!username) {
+      return res.status(401).json({
+        ok: false,
+        error: "Unauthorized"
+      });
+    }
+
+    try {
+      const webEngine = require("../engines/webEngine");
+      const accountId = username;
+
+      const state = webEngine.warmingState[accountId] || {};
+      const needsWarming = webEngine.needsWarming(accountId);
+
+      console.log(`[WARMING] Status check: ${username}, needsWarming=${needsWarming}`);
+
+      res.json({
+        ok: true,
+        needsWarming,
+        state: {
+          warmed: state.warmed || false,
+          lastWarmed: state.lastWarmed || null,
+          activityScore: state.activityScore || 0,
+          videosWatched: state.videosWatched || 0,
+          likesGiven: state.likesGiven || 0
+        }
+      });
+    } catch (e) {
+      console.error(`[WARMING] Status error: ${e.message}`);
+      res.status(500).json({
+        ok: false,
+        message: e.message
+      });
     }
   });
 

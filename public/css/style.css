@@ -1,11 +1,14 @@
-html, body {
+html,
+body {
   height: 100%;
   margin: 0;
-  overflow: hidden; /* Prevent body scroll */
+  overflow: hidden;
+  /* Prevent body scroll */
 }
 
 .scroll-col {
-  height: calc(100vh - 50px); /* Adjust based on header height */
+  height: calc(100vh - 50px);
+  /* Adjust based on header height */
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -43,4 +46,42 @@ header {
 .badge {
   font-size: 11px;
   padding: 4px 6px;
+}
+
+/* ========================================
+ CSS: Add to style.css (optional styling)
+ ======================================== */
+
+#warmingStats {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 10px 0;
+}
+
+#warmingStats .fw-bold {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+#warmingStatusBadge {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+#manualWarmBtn {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border: none;
+  color: white;
+  font-weight: bold;
+  transition: transform 0.2s;
+}
+
+#manualWarmBtn:hover {
+  transform: scale(1.05);
+}
+
+#manualWarmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

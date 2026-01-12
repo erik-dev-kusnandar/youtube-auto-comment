@@ -751,3 +751,162 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+// ========================================
+// FRONTEND: Add to main.js
+// ========================================
+
+// Add to main.js after document.addEventListener("DOMContentLoaded", ...)
+
+// ===== ACCOUNT WARMING MANAGEMENT =====
+let warmingInProgress = false;
+
+async function checkWarmingStatus() {
+  try {
+    const res = await fetch("/warming-status");
+    const data = await res.json();
+
+    if (data.ok) {
+      const badge = document.getElementById("warmingStatusBadge");
+      const statsDiv = document.getElementById("warmingStats");
+
+      if (data.needsWarming) {
+        badge.textContent = "❄️ Cold";
+        badge.className = "badge bg-warning text-dark";
+      } else {
+        badge.textContent = "🔥 Warmed";
+        badge.className = "badge bg-success";
+      }
+
+      // Show stats if account has been warmed
+      if (data.state.warmed) {
+        statsDiv.style.display = "block";
+        document.getElementById("activityScore").textContent = data.state.activityScore || 0;
+        document.getElementById("videosWatched").textContent = data.state.videosWatched || 0;
+        document.getElementById("likesGiven").textContent = data.state.likesGiven || 0;
+
+        if (data.state.lastWarmed) {
+          const date = new Date(data.state.lastWarmed);
+          const hoursAgo = Math.floor((Date.now() - data.state.lastWarmed) / (1000 * 60 * 60));
+          document.getElementById("lastWarmed").textContent =
+            hoursAgo < 1 ? "Just now" :
+              hoursAgo < 24 ? `${hoursAgo}h ago` :
+                `${Math.floor(hoursAgo / 24)}d ago`;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Failed to check warming status", e);
+  }
+}
+
+document.getElementById("checkWarmingStatusBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("checkWarmingStatusBtn");
+  btn.disabled = true;
+  btn.textContent = "⏳ Checking...";
+
+  await checkWarmingStatus();
+
+  btn.disabled = false;
+  btn.textContent = "🔍 Check Status";
+});
+
+document.getElementById("manualWarmBtn").addEventListener("click", async () => {
+  if (warmingInProgress) {
+    showToast("Warming already in progress!", "warning");
+    return;
+  }
+
+  const btn = document.getElementById("manualWarmBtn");
+  const originalText = btn.textContent;
+
+  btn.disabled = true;
+  btn.textContent = "🔥 Warming...";
+  warmingInProgress = true;
+
+  const browserPath = document.getElementById("browserPath")?.value || "";
+  const headless = document.getElementById("headlessMode")?.checked !== false;
+
+  try {
+    showToast("🔥 Starting account warming routine...", "info");
+
+    const res = await fetch("/warm-account", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        browserPath,
+        headless: false // Always visible for warming so user can monitor
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+      showToast(`✅ ${data.message}`, "success");
+      showToast(`📊 Activity Score: ${data.activityScore}/100`, "info");
+      await checkWarmingStatus();
+    } else {
+      showToast(`❌ Warming failed: ${data.message}`, "danger");
+    }
+  } catch (e) {
+    showToast("❌ Error during warming process", "danger");
+    console.error(e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+    warmingInProgress = false;
+  }
+});
+
+// Auto-check warming status on page load
+document.addEventListener("DOMContentLoaded", () => {
+  checkWarmingStatus();
+});
+
+// Update START button to respect auto-warm setting
+const originalStartBtnHandler = startBtn.onclick;
+startBtn.onclick = async function (e) {
+  const autoWarm = document.getElementById("autoWarmBeforePosting")?.checked;
+
+  if (autoWarm) {
+    // Check if warming is needed
+    const statusRes = await fetch("/warming-status");
+    const statusData = await statusRes.json();
+
+    if (statusData.ok && statusData.needsWarming) {
+      const confirmWarm = confirm(
+        "⚠️ Your account needs warming to avoid shadow bans.\n\n" +
+        "This will take 3-5 minutes.\n\n" +
+        "Start warming now before posting?"
+      );
+
+      if (confirmWarm) {
+        showToast("🔥 Starting auto-warming before posting...", "info");
+
+        const warmRes = await fetch("/warm-account", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            browserPath: document.getElementById("browserPath")?.value || "",
+            headless: false
+          })
+        });
+
+        const warmData = await warmRes.json();
+
+        if (warmData.ok) {
+          showToast(`✅ Warming complete! Score: ${warmData.activityScore}/100`, "success");
+          await checkWarmingStatus();
+        } else {
+          showToast("⚠️ Warming failed, but will proceed with posting...", "warning");
+        }
+      }
+    }
+  }
+
+  // Continue with original start logic
+  if (originalStartBtnHandler) {
+    originalStartBtnHandler.call(this, e);
+  }
+};
+

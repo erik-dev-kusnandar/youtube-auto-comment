@@ -85,10 +85,76 @@
               </div>
             </div>
 
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="headlessMode" checked>
+              <label class="form-check-label small fw-bold" for="headlessMode">
+                Headless Mode (Sembunyikan Browser)
+              </label>
+              <div class="form-text" style="font-size: 10px;">
+                Aktifkan jika ingin browser berjalan di latar belakang.
+              </div>
+            </div>
+
             <button id="openWebLoginBtn" class="btn btn-outline-info btn-sm w-100 mb-2">🔓 Open Browser (Setup
               Login)</button>
           </div>
         </div>
+
+        <!-- ========================================
+        // FRONTEND: Add to index.html
+        // ======================================== -->
+
+        <!-- Add this card BEFORE the "Upload Video List" card in the LEFT COLUMN: -->
+
+        <!-- 🔥 Account Warming Card -->
+        <div class="card mb-3 shadow-sm">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>🔥 Account Warming</span>
+            <span id="warmingStatusBadge" class="badge bg-secondary">Unknown</span>
+          </div>
+          <div class="card-body">
+            <p class="small text-muted mb-2">
+              Warm your account before posting to avoid shadow bans!
+              <br><i>The bot will watch videos, like, and search to simulate real user behavior.</i>
+            </p>
+
+            <div class="mb-3" id="warmingStats" style="display:none;">
+              <div class="row text-center">
+                <div class="col-4">
+                  <div class="fw-bold text-primary" id="activityScore">0</div>
+                  <small class="text-muted">Score</small>
+                </div>
+                <div class="col-4">
+                  <div class="fw-bold text-success" id="videosWatched">0</div>
+                  <small class="text-muted">Videos</small>
+                </div>
+                <div class="col-4">
+                  <div class="fw-bold text-danger" id="likesGiven">0</div>
+                  <small class="text-muted">Likes</small>
+                </div>
+              </div>
+              <div class="text-muted mt-2" style="font-size:11px;">
+                Last warmed: <span id="lastWarmed">Never</span>
+              </div>
+            </div>
+
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="autoWarmBeforePosting" checked>
+              <label class="form-check-label" for="autoWarmBeforePosting">
+                Auto-warm before posting (if needed)
+              </label>
+            </div>
+
+            <button id="manualWarmBtn" class="btn btn-warning btn-sm w-100 mb-2">
+              🔥 Start Warming Now
+            </button>
+
+            <button id="checkWarmingStatusBtn" class="btn btn-outline-secondary btn-sm w-100">
+              🔍 Check Status
+            </button>
+          </div>
+        </div>
+
         <div class="card mb-3 shadow-sm">
           <div class="card-header">📁 Upload Video List (CSV)</div>
           <div class="card-body">
