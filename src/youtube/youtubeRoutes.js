@@ -23,14 +23,75 @@ const flowConfig = commentFlowConfig;
 
 const appiumEngine = require("../engines/appiumEngine");
 const webEngine = require("../engines/webEngine");
+const { syncProfile, DEST } = require("../../scripts/copy-profile");
+const _path = require("path");
+const _fs   = require("fs");
 
 module.exports = (pushLog) => {
   const router = express.Router();
 
-  // Web Browser Setup Login
+  // Sync real Chrome profile (running or not) into puppeteer_data
+  router.post("/web/copy-profile", async (req, res) => {
+    try {
+      const result = await syncProfile();
+      if (result.ok) {
+        res.json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (e) {
+      res.status(500).json({ ok: false, message: e.message });
+    }
+  });
+
+  // Profile sync status — reads .last_sync timestamp, no copying
+  router.get("/web/profile-status", (req, res) => {
+    const tsFile = _path.join(DEST, ".last_sync");
+    const oldTs  = _path.join(DEST, "last_sync.txt");
+
+    let lastSyncMs = null;
+    if (_fs.existsSync(tsFile)) {
+      lastSyncMs = parseInt(_fs.readFileSync(tsFile, "utf8").trim(), 10);
+    } else if (_fs.existsSync(oldTs)) {
+      lastSyncMs = new Date(_fs.readFileSync(oldTs, "utf8").trim()).getTime();
+    }
+
+    if (!lastSyncMs || isNaN(lastSyncMs)) {
+      return res.json({
+        synced: false,
+        message: "Profile not synced yet — will auto-sync before first Start."
+      });
+    }
+
+    const ageMs    = Date.now() - lastSyncMs;
+    const STALE_MS = 12 * 60 * 60 * 1000; // 12h
+    const synced   = ageMs < STALE_MS;
+    const lastSync = new Date(lastSyncMs).toISOString();
+
+    res.json({
+      synced,
+      lastSync,
+      ageMs,
+      message: synced
+        ? "Profile synced " + Math.round(ageMs / 60000) + " min ago."
+        : "Profile last synced " + Math.round(ageMs / 3600000) + "h ago — will auto-sync on next Start."
+    });
+  });
+
+  // Open new window test (Ctrl+N style)
+  router.post("/web/open-new-window", async (req, res) => {
+    try {
+      const url = req.body.url || "https://www.youtube.com";
+      const result = await webEngine.openNewWindow(url);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ ok: false, message: e.message });
+    }
+  });
+
+  // Web Browser Setup Login (kept for edge cases / manual override)
   router.post("/web/setup-login", async (req, res) => {
     try {
-      // Run in background but handle errors
       webEngine.setupLogin().catch(e => {
         console.error("Setup login browser error:", e.message);
       });

@@ -334,15 +334,15 @@ startBtn.addEventListener("click", async () => {
   stopBtn.disabled = false;
 
   const postingDuration = Number(
-    document.getElementById("postingDuration").value || 3600000
+    document.getElementById("postingDuration").value || 360000
   );
 
   const minDelay = Number(
-    document.getElementById("minDelayPerComment").value || 300000
+    document.getElementById("minDelayPerComment").value || 30000
   );
 
   const maxDelay = Number(
-    document.getElementById("maxDelayPerComment").value || 600000
+    document.getElementById("maxDelayPerComment").value || 60000
   );
 
   const method = document.getElementById("postingMethod").value;
@@ -626,7 +626,6 @@ document.getElementById("profileForm").addEventListener("submit", async (e) => {
 // ===== POSTING METHOD SELECTION =====
 const postingMethod = document.getElementById("postingMethod");
 const webSettings = document.getElementById("webSettings");
-const openWebLoginBtn = document.getElementById("openWebLoginBtn");
 const appiumSettings = document.getElementById("appiumSettings");
 const testConnBtn = document.getElementById("testConnBtn");
 const connectionStatus = document.getElementById("connectionStatus");
@@ -642,6 +641,7 @@ postingMethod.addEventListener("change", () => {
     appiumSettings.style.display = "none";
     webSettings.style.display = "block";
     startBtn.disabled = false;
+    loadProfileSyncStatus(); // load status when switching to web mode
   } else {
     appiumSettings.style.display = "none";
     webSettings.style.display = "none";
@@ -649,22 +649,117 @@ postingMethod.addEventListener("change", () => {
   }
 });
 
-openWebLoginBtn.addEventListener("click", async () => {
-  openWebLoginBtn.disabled = true;
-  openWebLoginBtn.textContent = "⌛ Opening Browser...";
+// ===== AUTO SYNC STATUS =====
+async function loadProfileSyncStatus() {
+  const badge   = document.getElementById("profileSyncBadge");
+  const icon    = document.getElementById("profileSyncIcon");
+  const msg     = document.getElementById("profileSyncMsg");
+  const timeEl  = document.getElementById("profileSyncTime");
+
+  badge.className = "badge bg-secondary";
+  badge.textContent = "Checking...";
+  icon.textContent = "⏳";
+  msg.textContent = "Checking profile...";
+  timeEl.textContent = "";
+
   try {
-    const res = await fetch("/web/setup-login", { method: "POST" });
+    const res  = await fetch("/web/profile-status");
+    const json = await res.json();
+
+    if (json.synced) {
+      badge.className  = "badge bg-success";
+      badge.textContent = "Synced ✔";
+      icon.textContent  = "✅";
+      msg.textContent   = "Chrome profile synced — login session active";
+      timeEl.textContent = json.lastSync ? `Last sync: ${new Date(json.lastSync).toLocaleString()}` : "";
+    } else {
+      badge.className  = "badge bg-warning text-dark";
+      badge.textContent = "Not Synced";
+      icon.textContent  = "⚠️";
+      msg.textContent   = json.message || "Profile not synced yet. Will auto-sync on next Start.";
+      timeEl.textContent = "Profile will be copied from Chrome automatically.";
+    }
+  } catch (e) {
+    badge.className  = "badge bg-danger";
+    badge.textContent = "Error";
+    icon.textContent  = "❌";
+    msg.textContent   = "Could not check profile status";
+  }
+}
+
+const openWebLoginBtn = document.getElementById("openWebLoginBtn");
+if (openWebLoginBtn) {
+  openWebLoginBtn.addEventListener("click", async () => {
+    openWebLoginBtn.disabled = true;
+    openWebLoginBtn.textContent = "⌛ Opening Browser...";
+    try {
+      const res = await fetch("/web/setup-login", { method: "POST" });
+      const json = await res.json();
+      if (json.ok) {
+        showToast("Browser Mimic dibuka! Silakan login YouTube akun Anda. Session akan tersimpan permanen.", "success");
+      } else {
+        showToast(json.message || "Gagal membuka browser", "danger");
+      }
+    } catch (e) {
+      showToast("Error membuka browser", "danger");
+    } finally {
+      openWebLoginBtn.disabled = false;
+      openWebLoginBtn.textContent = "🔑 Login Manual 1x (Buka Browser Mimic)";
+    }
+  });
+}
+
+const openNewWindowBtn = document.getElementById("openNewWindowBtn");
+if (openNewWindowBtn) {
+  openNewWindowBtn.addEventListener("click", async () => {
+    openNewWindowBtn.disabled = true;
+    openNewWindowBtn.textContent = "⌛ Membuka Tab...";
+    try {
+      const res = await fetch("/web/open-new-window", { method: "POST" });
+      const json = await res.json();
+      if (json.ok) {
+        showToast(`Tab Chrome berhasil dibuka! (${json.mode})`, "success");
+      } else {
+        showToast(json.message || "Gagal membuka tab Chrome", "danger");
+      }
+    } catch (e) {
+      showToast("Error membuka tab Chrome", "danger");
+    } finally {
+      openNewWindowBtn.disabled = false;
+      openNewWindowBtn.textContent = "🚀 Buka Tab di Chrome Aktif (CDP)";
+    }
+  });
+}
+
+const reSyncProfileBtn = document.getElementById("reSyncProfileBtn");
+reSyncProfileBtn.addEventListener("click", async () => {
+  reSyncProfileBtn.disabled = true;
+  reSyncProfileBtn.textContent = "⌛ Syncing...";
+  const msg   = document.getElementById("profileSyncMsg");
+  const badge = document.getElementById("profileSyncBadge");
+  badge.className = "badge bg-secondary";
+  badge.textContent = "Syncing...";
+
+  try {
+    const res  = await fetch("/web/copy-profile", { method: "POST" });
     const json = await res.json();
     if (json.ok) {
-      showToast("Browser opened! Please login to YouTube.", "success");
+      showToast(
+        `Profile synced (${json.account || "default"}). ` +
+        (json.cookiesCarried ? "Login session carried over ✔" : "⚠️ Cookies tidak terbawa (tutup Chrome dan coba lagi, atau gunakan Login Manual 1x)."),
+        json.cookiesCarried ? "success" : "warning"
+      );
+      loadProfileSyncStatus();
     } else {
-      showToast(json.message || "Failed to open browser", "danger");
+      showToast(json.message || "Failed to sync profile", "danger");
+      badge.className = "badge bg-danger";
+      badge.textContent = "Failed";
     }
   } catch (e) {
     showToast("Error connecting to server", "danger");
   } finally {
-    openWebLoginBtn.disabled = false;
-    openWebLoginBtn.textContent = "🔓 Open Browser (Setup Login)";
+    reSyncProfileBtn.disabled = false;
+    reSyncProfileBtn.textContent = "🔄 Copy Profile dari Chrome Asli";
   }
 });
 

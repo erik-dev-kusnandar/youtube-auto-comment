@@ -13,16 +13,6 @@ const { processSpintax } = require("../utils");
 const wait = ms => new Promise(r => setTimeout(r, ms));
 const rand = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
 
-const usedPairs = new Set();
-const isDuplicate = (videoId, comment) => {
-  const key = `${videoId}||${comment}`;
-  if (usedPairs.has(key)) return true;
-  usedPairs.add(key);
-  return false;
-};
-
-let videoIndex = 0;
-
 async function waitWithStopCheck(ms, username) {
   const steps = Math.ceil(ms / 1000);
   for (let i = 0; i < steps; i++) {
@@ -47,9 +37,9 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
 
   // ✅ [IMPROVEMENT] Increase default delays and duration to mimic human behavior
   // This reduces the chance of comments being marked as 'heldForReview' or spam.
-  const postingDuration = Number(opts.postingDuration || 3600000); // default 1 hour
-  const minDelay = Number(opts.minDelay || 300000); // 5 minutes
-  const maxDelay = Number(opts.maxDelay || 600000); // 10 minutes
+  const postingDuration = Number(opts.postingDuration || 360000); // default 1 hour
+  const minDelay = Number(opts.minDelay || 30000); // 0,5 minutes
+  const maxDelay = Number(opts.maxDelay || 60000); // 1 minutes
 
   // ✅ CHOOSE ENGINE BASED ON METHOD
   const method = opts.method || "api";
@@ -79,6 +69,9 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
   // Randomizing the order prevents robotic sequential behavior visible in logs.
   const limitByDuration = opts.limitByDuration !== false; // default true if undefined
   const shuffledVideos = [...videos].sort(() => Math.random() - 0.5);
+  let videoIndex = 0;
+  const usedPairs = new Set();
+  const isDuplicate = (videoId, comment) => usedPairs.has(`${videoId}||${comment}`);
 
   const endTime = Date.now() + postingDuration;
   store.startWorker(username, postingDuration, limitByDuration);
@@ -324,6 +317,9 @@ async function startYoutubeWorker(username, opts = {}, pushLog = () => { }) {
         // LOGIC VISIBILITY CHECK DARI RESULT API / ENGINE
         decision.moderationStatus = result.moderationStatus || "published";
         decision.engine_msg = result.message || "";
+
+        // ✅ Only mark as used AFTER successful post (failed posts can be retried)
+        usedPairs.add(`${video.videoId}||${finalComment}`);
 
         const videoStatus = decision.moderationStatus === "held_for_review" ? "held_for_review" : "done";
         store.updateVideoStatus(username, video.videoId, videoStatus, finalComment, decision);

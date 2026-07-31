@@ -6,14 +6,19 @@
   "scripts": {
     "start": "nodemon src/app.js",
     "auth": "nodemon src/auth.js",
-    "dev": "nodemon src/app.js"
+    "dev": "nodemon src/app.js",
+    "copy-profile": "node scripts/copy-profile.js",
+    "copy-profile:force": "node scripts/copy-profile.js --force"
   },
   "nodemonConfig": {
+    "watch": [
+      "src"
+    ],
     "ignore": [
       "uploads/*",
       "data/*",
       "logs/*",
-      "puppeteer_data/*"
+      "puppeteer_data/**/*"
     ]
   },
   "dependencies": {
@@ -26,16 +31,17 @@
     "dotenv": "^16.6.1",
     "express": "^4.22.1",
     "express-session": "^1.18.2",
-    "googleapis": "^132.0.0",
+    "googleapis": "^173.0.0",
     "multer": "^1.4.5-lts.2",
     "openai": "^6.10.0",
     "papaparse": "^5.5.3",
+    "playwright": "^1.62.1",
     "puppeteer": "^24.34.0",
     "puppeteer-extra": "^3.3.6",
-    "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "sequelize": "^6.37.7",
-    "sqlite3": "^5.1.7",
-    "webdriverio": "^9.22.0",
+    "puppeteer-extra-plugin-stealth": "^2.10.4",
+    "sequelize": "^6.37.8",
+    "sqlite3": "^6.0.1",
+    "webdriverio": "^9.30.0",
     "winston": "^3.18.3"
   },
   "devDependencies": {
